@@ -29,7 +29,10 @@ refresh_rate_plot = 1  # in Hz
 crop = 10  # number of seconds to drop at acquisition start before saving
 
 
-my_filename = 'C:/Users/15189/Desktop/MA 2.1.5 Board Thermal Testing/11_08_21/AllSystemsOff'  # with full path if target folder different from current folder (do not leave trailing /)
+folder = "C:/Users/15189/Desktop/MA 2.1.5 Board Thermal Testing/11_08_21/"
+fname = "AllSystemsOff"  # with full path if target folder different from current folder (do not leave trailing /)
+
+my_filename = folder + fname
 
 rewriteFlag = True
 acquisition_date = datetime.now().strftime('%m/%d/%y')
