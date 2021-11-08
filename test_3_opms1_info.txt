@@ -1,4 +1,0 @@
-Acquisition Date: 11/08/21
-Acquisition Start Time: 13:25:27
-Sampling rate: 1 Hz
-Number of RTD elements: 1
