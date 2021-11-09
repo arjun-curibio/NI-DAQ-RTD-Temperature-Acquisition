@@ -2,10 +2,20 @@
 Analog data acquisition for QuSpin's OPMs via National Instruments' cDAQ unit
 The following assumes:
 """
+folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_08_21 Testing/"
+fname = "Magnetometer_Readings_30sON_30sOFF_with_Incubator_Opening"  # with full path if target folder different from current folder (do not leave trailing /)
+fname = 'Magnetometer_ON_Time_to_Reach_1C'
+fname = 'StimON_No_Magnetometers_Time_to_Reach_1C_1Hz_cooldown'
 
+fname = 'test'
+
+well_positions = ['B1', 'C3', 'B4', 'C6']
+
+savefigFlag = True
 # Imports
 import matplotlib.pyplot as plt
 import numpy as np
+from math import floor, ceil
 
 import nidaqmx
 from nidaqmx.stream_readers import AnalogMultiChannelReader
@@ -24,29 +34,31 @@ sampling_freq_in = 1  # in Hz
 buffer_in_size = 1
 bufsize_callback = buffer_in_size
 buffer_in_size_cfg = round(buffer_in_size * 1)  # clock configuration
-chans_in = 1  # set to number of active OPMs (x2 if By and Bz are used, but that is not recommended)
+chans_in = 4  # set to number of active OPMs (x2 if By and Bz are used, but that is not recommended)
 refresh_rate_plot = 1  # in Hz
-crop = 10  # number of seconds to drop at acquisition start before saving
-
-
-folder = "C:/Users/15189/Desktop/MA 2.1.5 Board Thermal Testing/11_08_21/"
-fname = "AllSystemsOff"  # with full path if target folder different from current folder (do not leave trailing /)
-
+crop = 0  # number of seconds to drop at acquisition start before saving
+plotter_window = 60
+plotter_grid_size = 10
+# fname = 'test'
 my_filename = folder + fname
 
-rewriteFlag = True
+print(' ')
+
+print(my_filename)
+print(' ')
+rewriteFlag = False
 acquisition_date = datetime.now().strftime('%m/%d/%y')
 acquisition_start_time = datetime.now().strftime('%H:%M:%S')
 
 # Initialize data placeholders
 buffer_in = np.zeros((chans_in, buffer_in_size))
-data = np.zeros((chans_in, 1))  # will contain a first column with zeros but that's fine
+data = np.zeros((chans_in, 0))
 
 
 # Definitions of basic functions
 def ask_user():
     global running
-    input("Press ENTER/RETURN or close window to stop acquisition.")
+    input("Close window to stop acquisition.\n")
     running = False
 
 
@@ -55,21 +67,20 @@ def cfg_read_task():  # uses above parameters
     task.ai_channels.add_ai_rtd_chan("RTD4_1/ai0", 
         current_excit_source=constants.ExcitationSource.INTERNAL, 
         current_excit_val=0.001, 
-        resistance_config=constants.ResistanceConfiguration.THREE_WIRE)
-    """
+        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE)
     task.ai_channels.add_ai_rtd_chan("RTD4_1/ai1", 
         current_excit_source=constants.ExcitationSource.INTERNAL, 
         current_excit_val=0.001, 
-        resistance_config=constants.ResistanceConfiguration.THREE_WIRE)
+        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE)
     task.ai_channels.add_ai_rtd_chan("RTD4_1/ai2", 
         current_excit_source=constants.ExcitationSource.INTERNAL, 
         current_excit_val=0.001, 
-        resistance_config=constants.ResistanceConfiguration.THREE_WIRE)
+        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE)
     task.ai_channels.add_ai_rtd_chan("RTD4_1/ai3", 
         current_excit_source=constants.ExcitationSource.INTERNAL, 
         current_excit_val=0.001, 
-        resistance_config=constants.ResistanceConfiguration.THREE_WIRE)
-    """
+        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE)
+    
     task.timing.cfg_samp_clk_timing(rate=sampling_freq_in, sample_mode=constants.AcquisitionType.CONTINUOUS,
         samps_per_chan=buffer_in_size_cfg)
     
@@ -111,19 +122,30 @@ task.start()
 
 # Plot a visual feedback for the user's mental health
 f, ax1 = plt.subplots(1, 1, sharex='all', sharey='none')
+
 ii=0
 while running and plt.get_fignums():  # make this adapt to number of channels automatically
     ax1.clear()
 
-    ax1.plot(data[:, -sampling_freq_in * 10:].T)
+    ax1.plot(data.T)
+    ax1.legend(well_positions, loc='upper left')
     # Label and axis formatting
     ax1.set_xlabel('time [s]')
     ax1.set_ylabel('Temperature [C]')
-    xticks = np.arange(0, data[0, -sampling_freq_in * 10:].size, sampling_freq_in)
-    xticklabels = np.arange(0, xticks.size, 1)
+    
+    xlim1 = ax1.get_xlim()
+    xticks = np.arange( start=plotter_grid_size*floor(xlim1[0]/plotter_grid_size), 
+                        stop=plotter_grid_size*ceil(xlim1[1]/plotter_grid_size), 
+                        step=plotter_grid_size)
+    # xticklabels = np.arange(0, xticks.size, 1)
     ax1.set_xticks(xticks)
-    ax1.set_xticklabels(xticklabels+ii-10)
-
+    ax1.set_xlim([max([0, ii-plotter_window]), data.shape[1]-1])
+    ax1.set_ylim(auto=True)
+    # ax1.set_xticklabels(xticklabels)
+    ax1.grid(True,axis='x')
+    ax1.yaxis.set_ticks_position("right")
+    ax1.grid(True,axis='y')
+    max([0,ii-plotter_window])
     plt.pause(1/refresh_rate_plot)  # required for dynamic plot to work (if too low, nulling performance bad)
 
     ii += 1
@@ -144,7 +166,7 @@ if rewriteFlag == False:
 
 import pandas as pd
 
-df = pd.DataFrame(data.T, columns=[str(int(i)) for i in range(data.shape[0])])
+df = pd.DataFrame(data.T, columns=well_positions, )
 df.to_csv(filename + '.csv', sep=',')
 
 print(df)
@@ -192,14 +214,20 @@ print("Close the window and press ENTER in the Terminal to close program.")
 # Final plot of whole time course the acquisition
 plt.close('all')
 f_tot, ax1 = plt.subplots(1, 1, sharex='all', sharey='none')
-ax1.plot(data[:, 1:].T)  # note the exclusion of the first two (automatically zoomed in plot)
+ax1.plot(np.arange(0, data.shape[1], 1)/60, data.T)  
+
 # Label formatting ...
+ax1.legend(well_positions, loc='upper left')
 ax1.set_ylabel('Temperature [C]')
-ax1.set_xlabel('Time [s]')
+ax1.set_xlabel('Time [m]')
+ax1.grid(True)
 #xticks = np.arange(0, data[0, :].size, sampling_freq_in)
 #xticklabels = np.arange(0, xticks.size, 1)
 # ax1.set_xticks(xticks)
 # ax1.set_xticklabels(xticklabels)
-print(data)
+print(df)
+if savefigFlag:
+    plt.savefig(filename, format='png')
+
 plt.show()
 # %%
