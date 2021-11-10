@@ -2,15 +2,17 @@
 Analog data acquisition for QuSpin's OPMs via National Instruments' cDAQ unit
 The following assumes:
 """
-folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_08_21 Testing/"
+folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_09_21 Testing/"
+
 fname = "Magnetometer_Readings_30sON_30sOFF_with_Incubator_Opening"  # with full path if target folder different from current folder (do not leave trailing /)
 fname = 'Magnetometer_ON_Time_to_Reach_1C'
 fname = 'StimON_No_Magnetometers_Time_to_Reach_1C_1Hz_cooldown'
 
-fname = 'test'
+fname = 'Stim_6Hz_300s'
 
-well_positions = ['B1', 'C3', 'B4', 'C6']
+WELL_POSITIONS = ['B1', 'C3', 'B4', 'C6']
 
+PLOTTER_WINDOW = 15 # seconds
 savefigFlag = True
 # Imports
 import matplotlib.pyplot as plt
@@ -37,7 +39,7 @@ buffer_in_size_cfg = round(buffer_in_size * 1)  # clock configuration
 chans_in = 4  # set to number of active OPMs (x2 if By and Bz are used, but that is not recommended)
 refresh_rate_plot = 1  # in Hz
 crop = 0  # number of seconds to drop at acquisition start before saving
-plotter_window = 60
+
 plotter_grid_size = 10
 # fname = 'test'
 my_filename = folder + fname
@@ -123,12 +125,13 @@ task.start()
 # Plot a visual feedback for the user's mental health
 f, ax1 = plt.subplots(1, 1, sharex='all', sharey='none')
 
-ii=0
+time_keeper=0
 while running and plt.get_fignums():  # make this adapt to number of channels automatically
+    t0 = datetime.now()
     ax1.clear()
 
     ax1.plot(data.T)
-    ax1.legend(well_positions, loc='upper left')
+    ax1.legend(WELL_POSITIONS, loc='upper left')
     # Label and axis formatting
     ax1.set_xlabel('time [s]')
     ax1.set_ylabel('Temperature [C]')
@@ -139,16 +142,17 @@ while running and plt.get_fignums():  # make this adapt to number of channels au
                         step=plotter_grid_size)
     # xticklabels = np.arange(0, xticks.size, 1)
     ax1.set_xticks(xticks)
-    ax1.set_xlim([max([0, ii-plotter_window]), data.shape[1]-1])
+
+    ax1.set_xlim([max([0, time_keeper-PLOTTER_WINDOW-1]), data.shape[1]-1])
     ax1.set_ylim(auto=True)
     # ax1.set_xticklabels(xticklabels)
     ax1.grid(True,axis='x')
     ax1.yaxis.set_ticks_position("right")
     ax1.grid(True,axis='y')
-    max([0,ii-plotter_window])
-    plt.pause(1/refresh_rate_plot)  # required for dynamic plot to work (if too low, nulling performance bad)
+    print(ax1.get_xlim())
+    plt.pause(1/refresh_rate_plot-(datetime.now()-t0).total_seconds())  # required for dynamic plot to work (if too low, nulling performance bad)
 
-    ii += 1
+    time_keeper += 1
 
 # Close task to clear connection once done
 task.close()
@@ -166,7 +170,7 @@ if rewriteFlag == False:
 
 import pandas as pd
 
-df = pd.DataFrame(data.T, columns=well_positions, )
+df = pd.DataFrame(data.T, columns=WELL_POSITIONS, )
 df.to_csv(filename + '.csv', sep=',')
 
 print(df)
@@ -217,7 +221,7 @@ f_tot, ax1 = plt.subplots(1, 1, sharex='all', sharey='none')
 ax1.plot(np.arange(0, data.shape[1], 1)/60, data.T)  
 
 # Label formatting ...
-ax1.legend(well_positions, loc='upper left')
+ax1.legend(WELL_POSITIONS, loc='upper left')
 ax1.set_ylabel('Temperature [C]')
 ax1.set_xlabel('Time [m]')
 ax1.grid(True)
@@ -227,7 +231,7 @@ ax1.grid(True)
 # ax1.set_xticklabels(xticklabels)
 print(df)
 if savefigFlag:
-    plt.savefig(filename, format='png')
+    plt.savefig(filename + '.png', format='png')
 
 plt.show()
 # %%
