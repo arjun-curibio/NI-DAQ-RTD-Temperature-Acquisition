@@ -144,7 +144,9 @@ while running and plt.get_fignums():  # make this adapt to number of channels au
     ax1.set_xticks(xticks)
 
     ax1.set_xlim([max([0, time_keeper-PLOTTER_WINDOW-1]), data.shape[1]-1])
-    ax1.set_ylim(auto=True)
+    ax1.set_ylim([  floor(min(data[:, :PLOTTER_WINDOW])), 
+                     ceil(max(data[:, :PLOTTER_WINDOW]))])
+    
     # ax1.set_xticklabels(xticklabels)
     ax1.grid(True,axis='x')
     ax1.yaxis.set_ticks_position("right")
