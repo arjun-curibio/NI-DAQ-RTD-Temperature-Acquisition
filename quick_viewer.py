@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+
 folder = 'C:/Users/15189/Desktop/MA 2.1.5 Board Thermal Testing/11_09_21 Testing/'
 WELL_POSITIONS = ['B1', 'C3', 'B4', 'C6']
 
@@ -36,6 +37,24 @@ fig.supxlabel('Time [m]')
 fig.suptitle('Heating from Magnetometers/2.1.5 Board')
 fig.supylabel('Temperature [C]')
 
+
+
+# magnetometer and board only - cooling plate
+file = 'Mag_10minutes_coolingplate.csv'
+df = pd.read_csv(folder + file, sep=',', index_col=0)
+base = df[df.index<70].mean()
+df = df - base + 37
+
+# df.drop(range(540, df.shape[0]), inplace=True) # remove garbage data
+df.set_index(pd.Series(df.index/60), inplace=True)
+
+fig, ax1 = plt.subplots(nrows=1, ncols=3, sharey=True)
+df.plot(subplots=True, ax=ax1, linewidth=3, grid=True)
+  
+ax1[0].set_ylim([36.95, 38])
+fig.supxlabel('Time [m]')
+fig.suptitle('Heating from Magnetometers/2.1.5 Board - with cooling plate')
+fig.supylabel('Temperature [C]')
 
 
 ##  5 minutes stim
@@ -80,4 +99,27 @@ base = df_selected[df_selected.index<30].mean()
 df_selected = df_selected - base + 37
 df_selected.set_index(pd.Series(df_selected.index/60), inplace=True)
 df_selected.plot(xlabel='Time [m]', ylabel='Temperature [C]', title='STIM - 20 ms, 50 mA, 6 Hz - 90 minutes', markersize=10, marker='o', grid=True)
+
+### long stim
+
+file = 'Stim_6Hz_90min_coolingplate.csv'
+df = pd.read_csv(folder + file, sep=',', index_col=0)
+
+
+df_selected = pd.DataFrame(df[(df.index>0)   & (df.index<50)].mean()).transpose()
+df_selected = df_selected.append(pd.DataFrame(df[(df.index>445) & (df.index<470)].mean()).transpose(), ignore_index=True)
+df_selected = df_selected.append(pd.DataFrame(df[(df.index>870) & (df.index<875)].mean()).transpose(), ignore_index=True)
+df_selected = df_selected.append(pd.DataFrame(df[(df.index>1570) & (df.index<1590)].mean()).transpose(), ignore_index=True)
+df_selected = df_selected.append(pd.DataFrame(df[(df.index>2150) & (df.index<2170)].mean()).transpose(), ignore_index=True)
+df_selected = df_selected.append(pd.DataFrame(df[(df.index>2765) & (df.index<2790)].mean()).transpose(), ignore_index=True)
+df_selected = df_selected.append(pd.DataFrame(df[(df.index>3365) & (df.index<3385)].mean()).transpose(), ignore_index=True)
+df_selected = df_selected.append(pd.DataFrame(df[(df.index>4020) & (df.index<4040)].mean()).transpose(), ignore_index=True)
+df_selected = df_selected.append(pd.DataFrame(df[(df.index>4650) & (df.index<4672)].mean()).transpose(), ignore_index=True)
+df_selected = df_selected.append(pd.DataFrame(df[(df.index>5275)].mean()).transpose(), ignore_index=True)
+df_selected.set_index(pd.Series([0, 445, 870, 1570, 2150, 2765, 3365, 4020, 4650, 5275]), inplace=True)
+base = df_selected[df_selected.index<30].mean()
+df_selected = df_selected - base + 37
+df_selected.set_index(pd.Series(df_selected.index/60), inplace=True)
+df_selected_mean_std = df_selected.describe()
+df_selected.plot(xlabel='Time [m]', ylabel='Temperature [C]', title='STIM with cooling plate- 20 ms, 50 mA, 6 Hz - 90 minutes', markersize=10, marker='o', grid=True)
 
