@@ -2,15 +2,11 @@
 Analog data acquisition for QuSpin's OPMs via National Instruments' cDAQ unit
 The following assumes:
 """
-folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_09_21 Testing/"
+folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_15_21 Testing/"
 
-fname = "Magnetometer_Readings_30sON_30sOFF_with_Incubator_Opening"  # with full path if target folder different from current folder (do not leave trailing /)
-fname = 'Magnetometer_ON_Time_to_Reach_1C'
-fname = 'StimON_No_Magnetometers_Time_to_Reach_1C_1Hz_cooldown'
+fname = 'test'
 
-fname = 'Stim_6Hz_300s'
-
-WELL_POSITIONS = ['B1', 'C3', 'B4', 'C6']
+WELL_POSITIONS = ['B1', 'Under Well Plate', 'B4', 'C6']
 
 PLOTTER_WINDOW = 15 # seconds
 savefigFlag = True
@@ -66,10 +62,12 @@ def ask_user():
 
 def cfg_read_task():  # uses above parameters
     task = nidaqmx.Task()
+    
     task.ai_channels.add_ai_rtd_chan("RTD4_1/ai0", 
         current_excit_source=constants.ExcitationSource.INTERNAL, 
         current_excit_val=0.001, 
         resistance_config=constants.ResistanceConfiguration.FOUR_WIRE)
+    
     task.ai_channels.add_ai_rtd_chan("RTD4_1/ai1", 
         current_excit_source=constants.ExcitationSource.INTERNAL, 
         current_excit_val=0.001, 
@@ -123,11 +121,14 @@ task.start()
 
 
 # Plot a visual feedback for the user's mental health
-f, ax1 = plt.subplots(1, 1, sharex='all', sharey='none')
+f, ax = plt.subplots(1, 2)
 
 time_keeper=0
 while running and plt.get_fignums():  # make this adapt to number of channels automatically
     t0 = datetime.now()
+    ax1 = ax[0]
+    ax2 = ax[1]
+
     ax1.clear()
 
     ax1.plot(data.T)
@@ -144,14 +145,25 @@ while running and plt.get_fignums():  # make this adapt to number of channels au
     ax1.set_xticks(xticks)
 
     ax1.set_xlim([max([0, time_keeper-PLOTTER_WINDOW-1]), data.shape[1]-1])
-    ax1.set_ylim([  floor(min(data[:, :PLOTTER_WINDOW])), 
-                     ceil(max(data[:, :PLOTTER_WINDOW]))])
+    if bool(sum(data[:, -1:].T.squeeze())):
+        ax1.set_ylim([floor(np.amin(data[:,-15:], axis=(0,1))*10)/10, ceil(np.amax(data[:,-15:], axis=(0,1))*10)/10])
     
     # ax1.set_xticklabels(xticklabels)
     ax1.grid(True,axis='x')
     ax1.yaxis.set_ticks_position("right")
     ax1.grid(True,axis='y')
-    print(ax1.get_xlim())
+    print(data[:,-1:].T.squeeze())
+    
+    ax2.clear()
+    ax2.plot(data.T)
+    ax2.set_xlabel('time [s]')
+    ax2.set_ylabel('Temperature [C]')
+    ax2.grid(True)
+    ax2.yaxis.set_ticks_position("right")
+    # ax2.set_xticks( np.arange(0, plotter_grid_size*ceil(data.shape[1]/plotter_grid_size), plotter_grid_size))
+    if bool(sum(data[:, -1:].T.squeeze())):
+        ax2.set_ylim([floor(np.amin(data, axis=(0,1))*10)/10, ceil(np.amax(data, axis=(0,1))*10)/10])
+    
     plt.pause(1/refresh_rate_plot-(datetime.now()-t0).total_seconds())  # required for dynamic plot to work (if too low, nulling performance bad)
 
     time_keeper += 1
