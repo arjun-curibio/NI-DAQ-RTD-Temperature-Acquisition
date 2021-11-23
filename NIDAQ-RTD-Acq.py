@@ -2,8 +2,8 @@
 Analog data acquisition for QuSpin's OPMs via National Instruments' cDAQ unit
 The following assumes:
 """
-folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_15_21 Testing/"
 
+folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_15_21 Testing/"
 fname = 'test'
 
 WELL_POSITIONS = ['B1', 'Under Well Plate', 'B4', 'C6']
