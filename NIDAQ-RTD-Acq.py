@@ -2,13 +2,7 @@
 Analog data acquisition for QuSpin's OPMs via National Instruments' cDAQ unit
 The following assumes:
 """
-<<<<<<< HEAD:example_from_so_WORKS.py
 folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_18_21 Testing/"
-=======
-
-folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_15_21 Testing/"
-fname = 'test'
->>>>>>> 081858807fd0389336f8dc9cfc203107a822f850:NIDAQ-RTD-Acq.py
 
 fname = 'Ionoptix_Steady_State_4V_1Hz_10ms'
 # fname = 'monitor'
