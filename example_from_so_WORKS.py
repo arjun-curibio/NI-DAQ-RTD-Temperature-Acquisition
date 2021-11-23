@@ -2,14 +2,15 @@
 Analog data acquisition for QuSpin's OPMs via National Instruments' cDAQ unit
 The following assumes:
 """
-folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_15_21 Testing/"
+folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_18_21 Testing/"
 
-fname = 'test'
-
+fname = 'Ionoptix_Steady_State_4V_1Hz_10ms'
+# fname = 'monitor'
 WELL_POSITIONS = ['B1', 'Under Well Plate', 'B4', 'C6']
 
-PLOTTER_WINDOW = 15 # seconds
+PLOTTER_WINDOW = 30 # seconds
 savefigFlag = True
+
 # Imports
 import matplotlib.pyplot as plt
 import numpy as np
@@ -36,7 +37,7 @@ chans_in = 4  # set to number of active OPMs (x2 if By and Bz are used, but that
 refresh_rate_plot = 1  # in Hz
 crop = 0  # number of seconds to drop at acquisition start before saving
 
-plotter_grid_size = 10
+plotter_grid_size = 5
 # fname = 'test'
 my_filename = folder + fname
 
@@ -45,8 +46,21 @@ print(' ')
 print(my_filename)
 print(' ')
 rewriteFlag = False
-acquisition_date = datetime.now().strftime('%m/%d/%y')
-acquisition_start_time = datetime.now().strftime('%H:%M:%S')
+
+# Final save data and metadata ... first in python reloadable format:
+filename = my_filename
+
+if rewriteFlag == False:
+    ii=0
+    while exists(filename + '.csv'):
+        filename = my_filename + str(ii)
+        ii += 1
+
+if fname == 'monitor':
+    pass
+else:
+    with open(filename + '.csv', 'w') as f:
+        f.write(','+','.join(WELL_POSITIONS) + '\n')
 
 # Initialize data placeholders
 buffer_in = np.zeros((chans_in, buffer_in_size))
@@ -99,6 +113,11 @@ def reading_task_callback(task_idx, event_type, num_samples, callback_data):  # 
         stream_in.read_many_sample(buffer_in, num_samples, timeout=constants.WAIT_INFINITELY)
 
         data = np.append(data, buffer_in, axis=1)  # appends buffered data to total variable data
+        if fname == 'monitor':
+            pass
+        else:
+            with open(filename + '.csv', 'a') as f:
+                f.write(str(int((datetime.now()-t0).total_seconds())) + ',' + np.array2string(data[:,-1], separator=',')[1:-1] + '\n')
 
     return 0  # Absolutely needed for this callback to be well defined (see nidaqmx doc).
 
@@ -116,84 +135,93 @@ thread_user.start()
 
 # Main loop
 running = True
-time_start = datetime.now()
 task.start()
+t0 = datetime.now()
+acquisition_date = t0.strftime('%m/%d/%y')
+acquisition_start_time = t0.strftime('%H:%M:%S')
 
 
 # Plot a visual feedback for the user's mental health
-f, ax = plt.subplots(1, 2)
+f, ax = plt.subplots(2,1)
 
 time_keeper=0
 while running and plt.get_fignums():  # make this adapt to number of channels automatically
-    t0 = datetime.now()
+    ti = datetime.now()
     ax1 = ax[0]
     ax2 = ax[1]
 
     ax1.clear()
 
-    ax1.plot(data.T)
+    ax1.plot(data.T[:,-PLOTTER_WINDOW:])
     ax1.legend(WELL_POSITIONS, loc='upper left')
     # Label and axis formatting
-    ax1.set_xlabel('time [s]')
+    # ax1.set_xlabel('time [s]')
     ax1.set_ylabel('Temperature [C]')
     
     xlim1 = ax1.get_xlim()
     xticks = np.arange( start=plotter_grid_size*floor(xlim1[0]/plotter_grid_size), 
-                        stop=plotter_grid_size*ceil(xlim1[1]/plotter_grid_size), 
-                        step=plotter_grid_size)
+                        stop =plotter_grid_size*ceil(xlim1[1] /plotter_grid_size), 
+                        step =plotter_grid_size)
     # xticklabels = np.arange(0, xticks.size, 1)
     ax1.set_xticks(xticks)
 
-    ax1.set_xlim([max([0, time_keeper-PLOTTER_WINDOW-1]), data.shape[1]-1])
+    if data.shape[1] <= PLOTTER_WINDOW:
+        ax1.set_xlim([0, PLOTTER_WINDOW-1])
+        xlim1 = ax1.get_xlim()
+        xticks = np.arange( start=plotter_grid_size*floor(xlim1[0]/plotter_grid_size), 
+                            stop =plotter_grid_size*ceil(xlim1[1] /plotter_grid_size), 
+                            step =plotter_grid_size)
+        ax1.set_xticks(xticks)
+
+    else:
+        ax1.set_xlim([data.shape[1]-PLOTTER_WINDOW-1, data.shape[1]-1])
+    
+    
     if bool(sum(data[:, -1:].T.squeeze())):
-        ax1.set_ylim([floor(np.amin(data[:,-15:], axis=(0,1))*10)/10, ceil(np.amax(data[:,-15:], axis=(0,1))*10)/10])
-    
+        ax1.set_ylim([ floor(np.amin(data[:,-PLOTTER_WINDOW:], axis=(0,1))*plotter_grid_size)/plotter_grid_size, 
+                        ceil(np.amax(data[:,-PLOTTER_WINDOW:], axis=(0,1))*plotter_grid_size)/plotter_grid_size])
+    # print(data.shape)
     # ax1.set_xticklabels(xticklabels)
-    ax1.grid(True,axis='x')
+    ax1.grid(True)
     ax1.yaxis.set_ticks_position("right")
-    ax1.grid(True,axis='y')
-    print(data[:,-1:].T.squeeze())
-    
     ax2.clear()
+
     ax2.plot(data.T)
     ax2.set_xlabel('time [s]')
     ax2.set_ylabel('Temperature [C]')
     ax2.grid(True)
     ax2.yaxis.set_ticks_position("right")
-    # ax2.set_xticks( np.arange(0, plotter_grid_size*ceil(data.shape[1]/plotter_grid_size), plotter_grid_size))
-    if bool(sum(data[:, -1:].T.squeeze())):
-        ax2.set_ylim([floor(np.amin(data, axis=(0,1))*10)/10, ceil(np.amax(data, axis=(0,1))*10)/10])
-    
-    plt.pause(1/refresh_rate_plot-(datetime.now()-t0).total_seconds())  # required for dynamic plot to work (if too low, nulling performance bad)
+    if data.shape[1] == 1:
+        ax2.set_xlim([0, 1])
+    else:
+        ax2.set_xlim([0, data.shape[1]-1])
 
-    time_keeper += 1
+    
+    # ax2.set_xticks( np.arange(0, plotter_grid_size*ceil(data.shape[1]/plotter_grid_size), plotter_grid_size))
+    
+    # plt.pause(1/refresh_rate_plot-(datetime.now()-ti).total_seconds())  # required for dynamic plot to work (if too low, nulling performance bad)
+    plt.pause(0.01)  # required for dynamic plot to work (if too low, nulling performance bad)
+    # print(str(int((datetime.now()-t0).total_seconds())) + ', ' + np.array2string(data[:,-1:].T.squeeze(), separator=', ')[1:-1])
 
 # Close task to clear connection once done
 task.close()
-duration = datetime.now() - time_start
+duration = datetime.now() - t0
 
 #%%
 # Final save data and metadata ... first in python reloadable format:
-filename = my_filename
-
-if rewriteFlag == False:
-    ii=0
-    while exists(filename + '.csv'):
-        filename = my_filename + str(ii)
-        ii += 1
 
 import pandas as pd
 
 df = pd.DataFrame(data.T, columns=WELL_POSITIONS, )
-df.to_csv(filename + '.csv', sep=',')
+# df.to_csv(filename + '.csv', sep=',')
 
-print(df)
-
-with open(filename + '_info.txt', 'w') as f:
-    f.write('Acquisition Date: ' + acquisition_date + '\n')
-    f.write('Acquisition Start Time: ' + acquisition_start_time+ '\n')
-    f.write('Sampling rate: ' + str(sampling_freq_in) + ' Hz'+ '\n')
-    f.write('Number of RTD elements: ' + str(chans_in)+ '\n')
+# Save Metadata to <filename>_info.txt
+if fname != 'monitor':
+    with open(filename + '_info.txt', 'w') as f:
+        f.write('Acquisition Date: ' + acquisition_date + '\n')
+        f.write('Acquisition Start Time: ' + acquisition_start_time+ '\n')
+        f.write('Sampling rate: ' + str(sampling_freq_in) + ' Hz'+ '\n')
+        f.write('Number of RTD elements: ' + str(chans_in)+ '\n')
 
 
 """
@@ -244,8 +272,8 @@ ax1.grid(True)
 # ax1.set_xticks(xticks)
 # ax1.set_xticklabels(xticklabels)
 print(df)
-if savefigFlag:
+if savefigFlag and fname != 'monitor':
     plt.savefig(filename + '.png', format='png')
 
-plt.show()
+plt.show(block='False')
 # %%
