@@ -2,14 +2,15 @@
 Analog data acquisition for QuSpin's OPMs via National Instruments' cDAQ unit
 The following assumes:
 """
-folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/11_18_21 Testing/"
+folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/12_14_21 Testing/"
 
-fname = 'Ionoptix_Steady_State_4V_1Hz_10ms'
-# fname = 'monitor'
+fname = '2.1.5_100mA_6Hz_10ms_CoolingPlate_36.0C'
+fname = 'monitor' # setting this variable to 'monitor' does not save any data or figures
 WELL_POSITIONS = ['B1', 'Under Well Plate', 'B4', 'C6']
 
 PLOTTER_WINDOW = 30 # seconds
-savefigFlag = True
+savefigFlag = True # save the final plot to a separate figure (RECOMMEND TO SET TO TRUE)
+rewriteFlag = False # If you want to re-write file, otherwise append number to filename (RECOMMENDED TO SET TO FALSE)
 
 # Imports
 import matplotlib.pyplot as plt
@@ -23,9 +24,7 @@ from nidaqmx import constants
 # from nidaqmx import stream_writers  # not needed in this script
 
 import threading
-import pickle
 from datetime import datetime
-import scipy.io
 from os.path import exists
 
 # Parameters
@@ -45,7 +44,6 @@ print(' ')
 
 print(my_filename)
 print(' ')
-rewriteFlag = False
 
 # Final save data and metadata ... first in python reloadable format:
 filename = my_filename
@@ -59,7 +57,7 @@ if rewriteFlag == False:
 if fname == 'monitor':
     pass
 else:
-    with open(filename + '.csv', 'w') as f:
+    with open(filename + '.csv', 'a') as f:
         f.write(','+','.join(WELL_POSITIONS) + '\n')
 
 # Initialize data placeholders
@@ -80,20 +78,27 @@ def cfg_read_task():  # uses above parameters
     task.ai_channels.add_ai_rtd_chan("RTD4_1/ai0", 
         current_excit_source=constants.ExcitationSource.INTERNAL, 
         current_excit_val=0.001, 
-        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE)
+        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE,
+        rtd_type=constants.RTDType.PT_3750)
     
     task.ai_channels.add_ai_rtd_chan("RTD4_1/ai1", 
         current_excit_source=constants.ExcitationSource.INTERNAL, 
         current_excit_val=0.001, 
-        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE)
+        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE,
+        rtd_type=constants.RTDType.PT_3750)
+
     task.ai_channels.add_ai_rtd_chan("RTD4_1/ai2", 
         current_excit_source=constants.ExcitationSource.INTERNAL, 
         current_excit_val=0.001, 
-        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE)
+        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE,
+        rtd_type=constants.RTDType.PT_3750)
+
     task.ai_channels.add_ai_rtd_chan("RTD4_1/ai3", 
         current_excit_source=constants.ExcitationSource.INTERNAL, 
         current_excit_val=0.001, 
-        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE)
+        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE,
+        rtd_type=constants.RTDType.PT_3750)
+
     
     task.timing.cfg_samp_clk_timing(rate=sampling_freq_in, sample_mode=constants.AcquisitionType.CONTINUOUS,
         samps_per_chan=buffer_in_size_cfg)
@@ -140,12 +145,18 @@ t0 = datetime.now()
 acquisition_date = t0.strftime('%m/%d/%y')
 acquisition_start_time = t0.strftime('%H:%M:%S')
 
+# Save Metadata to <filename>_info.txt
+if fname != 'monitor':
+    with open(filename + '_info.txt', 'a') as f:
+        f.write('Acquisition Date: ' + acquisition_date + '\n')
+        f.write('Acquisition Start Time: ' + acquisition_start_time+ '\n')
+        f.write('Sampling rate: ' + str(sampling_freq_in) + ' Hz'+ '\n')
+        f.write('Number of RTD elements: ' + str(chans_in)+ '\n')
+        f.write('\n')
 
 # Plot a visual feedback for the user's mental health
 f, ax = plt.subplots(2,1)
-
-time_keeper=0
-while running and plt.get_fignums():  # make this adapt to number of channels automatically
+while running and plt.get_fignums():
     ti = datetime.now()
     ax1 = ax[0]
     ax2 = ax[1]
@@ -195,17 +206,15 @@ while running and plt.get_fignums():  # make this adapt to number of channels au
         ax2.set_xlim([0, 1])
     else:
         ax2.set_xlim([0, data.shape[1]-1])
-
     
-    # ax2.set_xticks( np.arange(0, plotter_grid_size*ceil(data.shape[1]/plotter_grid_size), plotter_grid_size))
+    f.suptitle(fname)
     
-    # plt.pause(1/refresh_rate_plot-(datetime.now()-ti).total_seconds())  # required for dynamic plot to work (if too low, nulling performance bad)
     plt.pause(0.01)  # required for dynamic plot to work (if too low, nulling performance bad)
-    # print(str(int((datetime.now()-t0).total_seconds())) + ', ' + np.array2string(data[:,-1:].T.squeeze(), separator=', ')[1:-1])
 
+
+duration = datetime.now() - t0
 # Close task to clear connection once done
 task.close()
-duration = datetime.now() - t0
 
 #%%
 # Final save data and metadata ... first in python reloadable format:
@@ -214,15 +223,6 @@ import pandas as pd
 
 df = pd.DataFrame(data.T, columns=WELL_POSITIONS, )
 # df.to_csv(filename + '.csv', sep=',')
-
-# Save Metadata to <filename>_info.txt
-if fname != 'monitor':
-    with open(filename + '_info.txt', 'w') as f:
-        f.write('Acquisition Date: ' + acquisition_date + '\n')
-        f.write('Acquisition Start Time: ' + acquisition_start_time+ '\n')
-        f.write('Sampling rate: ' + str(sampling_freq_in) + ' Hz'+ '\n')
-        f.write('Number of RTD elements: ' + str(chans_in)+ '\n')
-
 
 """
 print(df)
@@ -263,14 +263,11 @@ f_tot, ax1 = plt.subplots(1, 1, sharex='all', sharey='none')
 ax1.plot(np.arange(0, data.shape[1], 1)/60, data.T)  
 
 # Label formatting ...
-ax1.legend(WELL_POSITIONS, loc='upper left')
+ax1.legend(WELL_POSITIONS)
 ax1.set_ylabel('Temperature [C]')
 ax1.set_xlabel('Time [m]')
 ax1.grid(True)
-#xticks = np.arange(0, data[0, :].size, sampling_freq_in)
-#xticklabels = np.arange(0, xticks.size, 1)
-# ax1.set_xticks(xticks)
-# ax1.set_xticklabels(xticklabels)
+
 print(df)
 if savefigFlag and fname != 'monitor':
     plt.savefig(filename + '.png', format='png')
