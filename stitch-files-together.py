@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import glob
 
 folder = 'C:/Users/15189/Desktop/MA 2.1.5 Board Thermal Testing/11_18_21 Testing/'
-file_header = 'Board_TestingCoolingPlateValues'
+file_header = ''
 
 filelist = glob.glob(folder + file_header + '*.csv')
 
