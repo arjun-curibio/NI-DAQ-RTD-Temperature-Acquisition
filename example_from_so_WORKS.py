@@ -4,13 +4,42 @@ The following assumes:
 """
 folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/12_14_21 Testing/"
 
-fname = '2.1.5_100mA_6Hz_10ms_CoolingPlate_36.0C'
+# fname = '2.1.5_100mA_6Hz_10ms_CoolingPlate_36.0C'
 fname = 'monitor' # setting this variable to 'monitor' does not save any data or figures
-WELL_POSITIONS = ['B1', 'Under Well Plate', 'B4', 'C6']
 
 PLOTTER_WINDOW = 30 # seconds
 savefigFlag = True # save the final plot to a separate figure (RECOMMEND TO SET TO TRUE)
 rewriteFlag = False # If you want to re-write file, otherwise append number to filename (RECOMMENDED TO SET TO FALSE)
+
+CHANNEL_NAMES = [
+    'cDAQ1Mod1/ai7',
+    'cDAQ1Mod1/ai5',
+    'cDAQ1Mod2/ai0',
+    'cDAQ1Mod2/ai2',
+    'cDAQ1Mod1/ai3',
+    'cDAQ1Mod1/ai1',
+    'cDAQ1Mod1/ai4',
+    'cDAQ1Mod1/ai2',
+    'cDAQ1Mod1/ai0',
+    'cDAQ1Mod2/ai1',
+    'cDAQ1Mod1/ai6',
+    'cDAQ1Mod2/ai3'
+]
+    
+CHANNEL_MAP = [
+    'A1',
+    'A2',
+    'A5',
+    'A6',
+    'B3',
+    'B4',
+    'C2',
+    'C3',
+    'C4',
+    'C5',
+    'D1',
+    'D6'
+]
 
 # Imports
 import matplotlib.pyplot as plt
@@ -27,13 +56,15 @@ import threading
 from datetime import datetime
 from os.path import exists
 
+import pandas as pd
+
 # Parameters
-sampling_freq_in = 1  # in Hz
-buffer_in_size = 1
+sampling_freq_in = 1  # in Hz, limited by hardware and number of channels (may collected duplicate data if to high)
+buffer_in_size = 1 # number of samples to collect on each channel to store in buffer before sending to computer
 bufsize_callback = buffer_in_size
 buffer_in_size_cfg = round(buffer_in_size * 1)  # clock configuration
-chans_in = 4  # set to number of active OPMs (x2 if By and Bz are used, but that is not recommended)
-refresh_rate_plot = 1  # in Hz
+chans_in = len(CHANNEL_NAMES)  # set to number of active OPMs
+refresh_rate_plot = 10  # in Hz
 crop = 0  # number of seconds to drop at acquisition start before saving
 
 plotter_grid_size = 5
@@ -45,9 +76,7 @@ print(' ')
 print(my_filename)
 print(' ')
 
-# Final save data and metadata ... first in python reloadable format:
 filename = my_filename
-
 if rewriteFlag == False:
     ii=0
     while exists(filename + '.csv'):
@@ -58,7 +87,7 @@ if fname == 'monitor':
     pass
 else:
     with open(filename + '.csv', 'a') as f:
-        f.write(','+','.join(WELL_POSITIONS) + '\n')
+        f.write(','+','.join(CHANNEL_MAP) + '\n')
 
 # Initialize data placeholders
 buffer_in = np.zeros((chans_in, buffer_in_size))
@@ -73,32 +102,15 @@ def ask_user():
 
 
 def cfg_read_task():  # uses above parameters
+    global task
     task = nidaqmx.Task()
     
-    task.ai_channels.add_ai_rtd_chan("RTD4_1/ai0", 
-        current_excit_source=constants.ExcitationSource.INTERNAL, 
+    for ii in range(chans_in):
+        task.ai_channels.add_ai_rtd_chan(CHANNEL_NAMES[ii],
+            current_excit_source=constants.ExcitationSource.INTERNAL, 
         current_excit_val=0.001, 
         resistance_config=constants.ResistanceConfiguration.FOUR_WIRE,
         rtd_type=constants.RTDType.PT_3750)
-    
-    task.ai_channels.add_ai_rtd_chan("RTD4_1/ai1", 
-        current_excit_source=constants.ExcitationSource.INTERNAL, 
-        current_excit_val=0.001, 
-        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE,
-        rtd_type=constants.RTDType.PT_3750)
-
-    task.ai_channels.add_ai_rtd_chan("RTD4_1/ai2", 
-        current_excit_source=constants.ExcitationSource.INTERNAL, 
-        current_excit_val=0.001, 
-        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE,
-        rtd_type=constants.RTDType.PT_3750)
-
-    task.ai_channels.add_ai_rtd_chan("RTD4_1/ai3", 
-        current_excit_source=constants.ExcitationSource.INTERNAL, 
-        current_excit_val=0.001, 
-        resistance_config=constants.ResistanceConfiguration.FOUR_WIRE,
-        rtd_type=constants.RTDType.PT_3750)
-
     
     task.timing.cfg_samp_clk_timing(rate=sampling_freq_in, sample_mode=constants.AcquisitionType.CONTINUOUS,
         samps_per_chan=buffer_in_size_cfg)
@@ -164,7 +176,7 @@ while running and plt.get_fignums():
     ax1.clear()
 
     ax1.plot(data.T[:,-PLOTTER_WINDOW:])
-    ax1.legend(WELL_POSITIONS, loc='upper left')
+    ax1.legend(CHANNEL_MAP, loc='upper left')
     # Label and axis formatting
     # ax1.set_xlabel('time [s]')
     ax1.set_ylabel('Temperature [C]')
@@ -183,7 +195,6 @@ while running and plt.get_fignums():
                             stop =plotter_grid_size*ceil(xlim1[1] /plotter_grid_size), 
                             step =plotter_grid_size)
         ax1.set_xticks(xticks)
-
     else:
         ax1.set_xlim([data.shape[1]-PLOTTER_WINDOW-1, data.shape[1]-1])
     
@@ -195,8 +206,8 @@ while running and plt.get_fignums():
     # ax1.set_xticklabels(xticklabels)
     ax1.grid(True)
     ax1.yaxis.set_ticks_position("right")
-    ax2.clear()
 
+    ax2.clear()
     ax2.plot(data.T)
     ax2.set_xlabel('time [s]')
     ax2.set_ylabel('Temperature [C]')
@@ -221,32 +232,9 @@ task.close()
 
 import pandas as pd
 
-df = pd.DataFrame(data.T, columns=WELL_POSITIONS, )
+df = pd.DataFrame(data.T, columns=CHANNEL_MAP, )
 # df.to_csv(filename + '.csv', sep=',')
 
-"""
-print(df)
-with open(filename, 'wb') as f:
-    pickle.dump(data, f)
-'''
-Load this variable back with:
-with open(name, 'rb') as f:
-    data_reloaded = pickle.load(f)
-'''
-# Human-readable text file:
-extension = '.txt'
-np.set_printoptions(threshold=np.inf, linewidth=np.inf)  # turn off summarization, line-wrapping
-with open(filename + extension, 'w') as f:
-    f.write('Acquisition Date: ' + acquisition_date + '\n')
-    f.write('Acquisition Start Time: ' + acquisition_start_time+ '\n')
-    f.write('Sampling rate: ' + str(sampling_freq_in) + ' Hz'+ '\n')
-    f.write('Number of RTD elements: ' + str(chans_in)+ '\n')
-    f.write(np.array2string(data.T, separator=', '))  # improve precision here!
-# Now in matlab:
-# extension = '.mat'
-# scipy.io.savemat(filename + extension, {'data':data})
-
-"""
 # Some messages at the end
 num_samples_acquired = data[0,:].size
 print("\n")
@@ -263,7 +251,7 @@ f_tot, ax1 = plt.subplots(1, 1, sharex='all', sharey='none')
 ax1.plot(np.arange(0, data.shape[1], 1)/60, data.T)  
 
 # Label formatting ...
-ax1.legend(WELL_POSITIONS)
+ax1.legend(CHANNEL_MAP)
 ax1.set_ylabel('Temperature [C]')
 ax1.set_xlabel('Time [m]')
 ax1.grid(True)
