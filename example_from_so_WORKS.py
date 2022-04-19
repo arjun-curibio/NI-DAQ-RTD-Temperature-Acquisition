@@ -2,10 +2,10 @@
 Analog data acquisition for QuSpin's OPMs via National Instruments' cDAQ unit
 The following assumes:
 """
-folder = "C:/Users/Nanosurface/Desktop/2.1.5-Board-Thermal-Testing/12_14_21 Testing/"
+folder = "C:/Users/achar/Documents/GitHub/NI-DAQ-RTD-Temperature-Acquisition/"
 
 # fname = '2.1.5_100mA_6Hz_10ms_CoolingPlate_36.0C'
-fname = 'monitor' # setting this variable to 'monitor' does not save any data or figures
+fname = 'test' # setting this variable to 'monitor' does not save any data or figures
 
 PLOTTER_WINDOW = 30 # seconds
 savefigFlag = True # save the final plot to a separate figure (RECOMMEND TO SET TO TRUE)
@@ -54,6 +54,7 @@ from nidaqmx import constants
 
 import threading
 from datetime import datetime
+from time import time
 from os.path import exists
 
 import pandas as pd
@@ -92,7 +93,7 @@ else:
 # Initialize data placeholders
 buffer_in = np.zeros((chans_in, buffer_in_size))
 data = np.zeros((chans_in, 0))
-
+t = []
 
 # Definitions of basic functions
 def ask_user():
@@ -122,7 +123,7 @@ def cfg_read_task():  # uses above parameters
 def reading_task_callback(task_idx, event_type, num_samples, callback_data):  # bufsize_callback is passed to num_samples
     global data
     global buffer_in
-
+    global t
     if running:
         # It may be wiser to read slightly more than num_samples here, to make sure one does not miss any sample,
         # see: https://documentation.help/NI-DAQmx-Key-Concepts/contCAcqGen.html
@@ -130,11 +131,16 @@ def reading_task_callback(task_idx, event_type, num_samples, callback_data):  # 
         stream_in.read_many_sample(buffer_in, num_samples, timeout=constants.WAIT_INFINITELY)
 
         data = np.append(data, buffer_in, axis=1)  # appends buffered data to total variable data
+        t.append(time())
+        print(np.array2string(data[:,-1], separator=','))
         if fname == 'monitor':
             pass
         else:
             with open(filename + '.csv', 'a') as f:
-                f.write(str(int((datetime.now()-t0).total_seconds())) + ',' + np.array2string(data[:,-1], separator=',')[1:-1] + '\n')
+                f.write(str(t[-1] - t[0]) + ',')
+                for ii in range(chans_in):
+                    f.write(str(data[ii,-1])+', ')
+                f.write('\n')
 
     return 0  # Absolutely needed for this callback to be well defined (see nidaqmx doc).
 
@@ -164,6 +170,10 @@ if fname != 'monitor':
         f.write('Acquisition Start Time: ' + acquisition_start_time+ '\n')
         f.write('Sampling rate: ' + str(sampling_freq_in) + ' Hz'+ '\n')
         f.write('Number of RTD elements: ' + str(chans_in)+ '\n')
+        f.write('\n')
+        f.write('Channel Mapping:\n')
+        for ii in range(chans_in):
+            f.write('Channel '+str(CHANNEL_NAMES[ii])+' --> Well '+str(CHANNEL_MAP[ii]+'\n'))
         f.write('\n')
 
 # Plot a visual feedback for the user's mental health
@@ -232,7 +242,7 @@ task.close()
 
 import pandas as pd
 
-df = pd.DataFrame(data.T, columns=CHANNEL_MAP, )
+df = pd.DataFrame(data.T, columns=CHANNEL_MAP, index=[(i-t[0]) for i in t])
 # df.to_csv(filename + '.csv', sep=',')
 
 # Some messages at the end
@@ -242,8 +252,6 @@ print("\n")
 print("Acquisition duration: {}.".format(duration))
 print("Acquired samples: {}.".format(num_samples_acquired - 1))
 
-
-print("Close the window and press ENTER in the Terminal to close program.")
 
 # Final plot of whole time course the acquisition
 plt.close('all')
@@ -260,5 +268,8 @@ print(df)
 if savefigFlag and fname != 'monitor':
     plt.savefig(filename + '.png', format='png')
 
+print("Close the window and press ENTER in the Terminal to close program.")
+
 plt.show(block='False')
+
 # %%
