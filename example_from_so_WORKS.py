@@ -11,37 +11,39 @@ PLOTTER_WINDOW = 30 # seconds
 savefigFlag = True # save the final plot to a separate figure (RECOMMEND TO SET TO TRUE)
 rewriteFlag = True # If you want to re-write file, otherwise append number to filename (RECOMMENDED TO SET TO FALSE)
 
-dontInclude = [0]
+dontInclude = [0,7] # do not include these channels
 CHANNEL_NAMES = [
-    'cDAQ1Mod1/ai7',
-    'cDAQ1Mod1/ai5',
-    'cDAQ1Mod2/ai0',
-    'cDAQ1Mod2/ai2',
-    'cDAQ1Mod1/ai3',
-    'cDAQ1Mod1/ai1',
-    'cDAQ1Mod1/ai4',
-    'cDAQ1Mod1/ai2',
-    'cDAQ1Mod1/ai0',
-    'cDAQ1Mod2/ai1',
-    'cDAQ1Mod1/ai6',
-    'cDAQ1Mod2/ai3'
+    'cDAQ1Mod1/ai7', # 0
+    'cDAQ1Mod1/ai5', # 1
+    'cDAQ1Mod2/ai0', # 2
+    'cDAQ1Mod2/ai2', # 3
+    'cDAQ1Mod1/ai3', # 4
+    'cDAQ1Mod1/ai1', # 5
+    'cDAQ1Mod1/ai4', # 6
+    'cDAQ1Mod1/ai2', # 7
+    'cDAQ1Mod1/ai0', # 8
+    'cDAQ1Mod2/ai1', # 9
+    'cDAQ1Mod1/ai6', # 10
+    'cDAQ1Mod2/ai3'  # 11
 ]
     
 CHANNEL_MAP = [
-    'A1',
-    'A2',
-    'A5',
-    'A6',
-    'B3',
-    'B4',
-    'C2',
-    'C3',
-    'C4',
-    'C5',
-    'D1',
-    'D6'
+    'A1', # 0
+    'A2', # 1
+    'A5', # 2
+    'A6', # 3
+    'B3', # 4
+    'B4', # 5
+    'C2', # 6
+    'C3', # 7
+    'C4', # 8
+    'C5', # 9
+    'D1', # 10
+    'D6'  # 11
 ]
-
+for ii in dontInclude:
+    CHANNEL_NAMES.pop(ii)
+    CHANNEL_MAP.pop(ii)
 # Imports
 import matplotlib.pyplot as plt
 import numpy as np
@@ -65,13 +67,11 @@ sampling_freq_in = 1  # in Hz, limited by hardware and number of channels (may c
 buffer_in_size = 1 # number of samples to collect on each channel to store in buffer before sending to computer
 bufsize_callback = buffer_in_size
 buffer_in_size_cfg = round(buffer_in_size * 1)  # clock configuration
-chans_in = len(CHANNEL_NAMES) - len(dontInclude)  # set to number of active OPMs
+chans_in = len(CHANNEL_NAMES)  # set to number of active OPMs
 refresh_rate_plot = 10  # in Hz
 crop = 0  # number of seconds to drop at acquisition start before saving
 
-for ii in dontInclude:
-    CHANNEL_NAMES.pop(ii)
-    CHANNEL_MAP.pop(ii)
+
 plotter_grid_size = 5
 # fname = 'test'
 my_filename = folder + fname
@@ -189,7 +189,7 @@ while running and plt.get_fignums():
     ax1.clear()
 
     ax1.plot(data.T[:,-PLOTTER_WINDOW:])
-    ax1.legend(CHANNEL_MAP, loc='upper left')
+    ax1.legend(CHANNEL_MAP, loc='upper left', ncol=2)
     # Label and axis formatting
     # ax1.set_xlabel('time [s]')
     ax1.set_ylabel('Temperature [C]')
@@ -244,7 +244,8 @@ task.close()
 # Final save data and metadata ... first in python reloadable format:
 
 import pandas as pd
-
+print(CHANNEL_MAP)
+print(data.T)
 df = pd.DataFrame(data.T, columns=CHANNEL_MAP, index=[(i-t[0]) for i in t])
 # df.to_csv(filename + '.csv', sep=',')
 
