@@ -9,8 +9,9 @@ fname = 'test' # setting this variable to 'monitor' does not save any data or fi
 
 PLOTTER_WINDOW = 30 # seconds
 savefigFlag = True # save the final plot to a separate figure (RECOMMEND TO SET TO TRUE)
-rewriteFlag = False # If you want to re-write file, otherwise append number to filename (RECOMMENDED TO SET TO FALSE)
+rewriteFlag = True # If you want to re-write file, otherwise append number to filename (RECOMMENDED TO SET TO FALSE)
 
+dontInclude = [0]
 CHANNEL_NAMES = [
     'cDAQ1Mod1/ai7',
     'cDAQ1Mod1/ai5',
@@ -64,10 +65,13 @@ sampling_freq_in = 1  # in Hz, limited by hardware and number of channels (may c
 buffer_in_size = 1 # number of samples to collect on each channel to store in buffer before sending to computer
 bufsize_callback = buffer_in_size
 buffer_in_size_cfg = round(buffer_in_size * 1)  # clock configuration
-chans_in = len(CHANNEL_NAMES)  # set to number of active OPMs
+chans_in = len(CHANNEL_NAMES) - len(dontInclude)  # set to number of active OPMs
 refresh_rate_plot = 10  # in Hz
 crop = 0  # number of seconds to drop at acquisition start before saving
 
+for ii in dontInclude:
+    CHANNEL_NAMES.pop(ii)
+    CHANNEL_MAP.pop(ii)
 plotter_grid_size = 5
 # fname = 'test'
 my_filename = folder + fname
@@ -132,7 +136,6 @@ def reading_task_callback(task_idx, event_type, num_samples, callback_data):  # 
 
         data = np.append(data, buffer_in, axis=1)  # appends buffered data to total variable data
         t.append(time())
-        print(np.array2string(data[:,-1], separator=','))
         if fname == 'monitor':
             pass
         else:
