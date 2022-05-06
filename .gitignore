@@ -1,3 +1,4 @@
 # do not add recordings folder to repo
 recordings
-__pychche__
+
+__pycache__
