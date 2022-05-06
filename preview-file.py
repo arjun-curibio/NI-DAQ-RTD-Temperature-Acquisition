@@ -1,10 +1,13 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import tkinter as tk
+from tkinter import filedialog
 
-folder = 'C:/Users/15189/Desktop/MA 2.1.5 Board Thermal Testing/11_18_21 Testing/'
+root = tk.Tk()
+root.withdraw()
 
-df = pd.read_csv(folder+'Board_TestingCoolingPlateValues.csv', sep=',', index_col=0)
+filepath = filedialog.askopenfilename()
+df = pd.read_csv(filepath, sep=',', index_col=0, header=3)
 
 df.set_index(pd.Series(df.index)/60, inplace=True)
-
 df.plot()
