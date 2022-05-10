@@ -4,14 +4,14 @@ The following assumes:
 """
 folder = "./recordings/"
 
-# fname = '2.1.5_100mA_6Hz_10ms_CoolingPlate_36.0C'
+# fname = 'V1_incubator_baseline'
 fname = 'monitor' # setting this variable to 'monitor' does not save any data or figures
 
 PLOTTER_WINDOW = 30 # seconds
 savefigFlag = True # save the final plot to a separate figure (RECOMMEND TO SET TO TRUE)
 rewriteFlag = False # If you want to re-write file, otherwise append number to filename (RECOMMENDED TO SET TO FALSE)
 
-dontInclude = [0,7] # do not include these channels (in case some are broken or reading false)
+dontInclude = [0,8] # do not include these channels (in case some are broken or reading false)
 CHANNEL_NAMES = [
     'cDAQ1Mod1/ai7', # 0
     'cDAQ1Mod1/ai5', # 1
@@ -41,6 +41,7 @@ CHANNEL_MAP = [
     'D1', # 10
     'D6'  # 11
 ]
+dontInclude.sort(reverse=True)
 for ii in dontInclude:
     CHANNEL_NAMES.pop(ii)
     CHANNEL_MAP.pop(ii)
