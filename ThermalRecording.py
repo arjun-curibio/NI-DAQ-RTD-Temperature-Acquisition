@@ -4,8 +4,12 @@ The following assumes:
 """
 folder = "./recordings/"
 
-# fname = 'V1_incubator_baseline'
-fname = 'monitor' # setting this variable to 'monitor' does not save any data or figures
+# setting fname to 'monitor' does not save any data or figures
+#                  'test' does not save figures, saves data, rewrites data
+
+fname = 'monitor'
+fname = 'test2' 
+sampling_freq_in = 1  # in Hz, limited by hardware and number of channels (may collected duplicate data if to0 high)
 
 PLOTTER_WINDOW = 30 # seconds
 savefigFlag = True # save the final plot to a separate figure (RECOMMEND TO SET TO TRUE)
@@ -62,7 +66,6 @@ from os.path import exists
 import pandas as pd
 
 # Parameters
-sampling_freq_in = 4  # in Hz, limited by hardware and number of channels (may collected duplicate data if to0 high)
 buffer_in_size = 1 # number of samples to collect on each channel to store in buffer before sending to computer
 bufsize_callback = buffer_in_size
 buffer_in_size_cfg = round(buffer_in_size * 1)  # clock configuration
@@ -77,8 +80,11 @@ my_filename = folder + fname
 
 print(' ')
 
-print(my_filename)
+# print(my_filename)
 print(' ')
+
+if fname == 'test':
+    rewriteFlag = True
 
 filename = my_filename
 if rewriteFlag == False:
@@ -86,7 +92,7 @@ if rewriteFlag == False:
     while exists(filename + '.csv'):
         filename = my_filename + str(ii)
         ii += 1
-
+print(filename+'\n\n')
 # Initialize data placeholders
 buffer_in = np.zeros((chans_in, buffer_in_size))
 data = np.zeros((chans_in, 0))
@@ -144,7 +150,7 @@ def cfg_read_task():  # uses above parameters
     # task.timing.ai_conv_rate = 1
     for chan in task.channels:
         # chan.ai_adc_timing_mode = constants.ADCTimingMode.HIGH_SPEED
-        # print(chan.ai_adc_timing_mode, end=', ')
+        print(chan.ai_adc_timing_mode, end=', ')
         pass
         
     
@@ -164,6 +170,9 @@ def reading_task_callback(task_idx, event_type, num_samples, callback_data):  # 
         num_available_channels = len(list(task.ai_channels))
         buffer_in = np.zeros((num_available_channels, num_samples))  # double definition ???
         stream_in.read_many_sample(buffer_in, num_samples, timeout=constants.WAIT_INFINITELY)
+        # while (buffer_in == data[-1,:]).any():
+        #     # print('in buffer')
+        #     stream_in.read_many_sample(buffer_in, num_samples, timeout=constants.WAIT_INFINITELY)
         
         data = np.append(data, buffer_in[re_index,:], axis=1)  # appends buffered data to total variable data
         t.append(time())
@@ -194,8 +203,8 @@ task = cfg_read_task()
 if fname == 'monitor':
     pass
 else:
-    with open(filename + '.csv', 'a') as f:
-        f.write(','+','.join(CHANNEL_MAP) + '\n')
+    with open(filename + '.csv', 'w') as f:
+        f.write('t,'+','.join(CHANNEL_MAP) + '\n')
 
 stream_in = AnalogMultiChannelReader(task.in_stream)
 task.register_every_n_samples_acquired_into_buffer_event(bufsize_callback, reading_task_callback)
@@ -232,56 +241,58 @@ ax1 = ax[0]
 ax2 = ax[1]
 
 while running and plt.get_fignums():
-    ax1.clear()
+    if len(t) > 0:
+        ax1.clear()
 
-    ax1.plot([round(i-t[0],2) for i in t], data.T[:,-PLOTTER_WINDOW:])
-    ax1.legend(CHANNEL_MAP, loc='upper left', ncol=2)
-    # Label and axis formatting
-    # ax1.set_xlabel('time [s]')
-    ax1.set_ylabel('Temperature [C]')
-    
-    xlim1 = ax1.get_xlim()
-    xticks = np.arange( start=plotter_grid_size*floor(xlim1[0]/plotter_grid_size), 
-                        stop =plotter_grid_size*ceil(xlim1[1] /plotter_grid_size), 
-                        step =plotter_grid_size)
-    # xticklabels = np.arange(0, xticks.size, 1)
-    ax1.set_xticks(xticks)
-
-    if (t[-1]-t[0]) <= PLOTTER_WINDOW:
-        ax1.set_xlim([0, PLOTTER_WINDOW-1])
+        ax1.plot([round(i-t[0],2) for i in t], data.T[:,-PLOTTER_WINDOW:])
+        ax1.legend(CHANNEL_MAP, loc='upper left', ncol=2)
+        # Label and axis formatting
+        # ax1.set_xlabel('time [s]')
+        ax1.set_ylabel('Temperature [C]')
         
         xlim1 = ax1.get_xlim()
         xticks = np.arange( start=plotter_grid_size*floor(xlim1[0]/plotter_grid_size), 
                             stop =plotter_grid_size*ceil(xlim1[1] /plotter_grid_size), 
                             step =plotter_grid_size)
+        # xticklabels = np.arange(0, xticks.size, 1)
         ax1.set_xticks(xticks)
-    else:
-        ax1.set_xlim([(t[-1]-t[0])-PLOTTER_WINDOW-1, (t[-1]-t[0])-1])
-    
-    # print(ax1.get_xlim())
-    if bool(sum(data[:, -1:].T.squeeze())):
-        ax1.set_ylim([ floor(np.amin(data[:,-round(PLOTTER_WINDOW*sampling_freq_in):], axis=(0,1))*plotter_grid_size)/plotter_grid_size, 
-                        ceil(np.amax(data[:,-round(PLOTTER_WINDOW*sampling_freq_in):], axis=(0,1))*plotter_grid_size)/plotter_grid_size])
-    # print(data.shape)
-    # ax1.set_xticklabels(xticklabels)
-    ax1.grid(True)
-    ax1.yaxis.set_ticks_position("right")
-
-    ax2.clear()
-    ax2.plot([floor((i-t[0])*100)/100 for i in t], data.T)
-    ax2.set_xlabel('time [s]')
-    ax2.set_ylabel('Temperature [C]')
-    ax2.grid(True)
-    ax2.yaxis.set_ticks_position("right")
-    try:
-        ax2.set_xlim([0, floor((max(t) - t[0])*100)/100])
-    except:
-        ax2.set_xlim([0, 1])
+        # print(t)
         
-    
-    f.suptitle(fname)
-    
-    plt.pause(0.01)  # required for dynamic plot to work (if too low, nulling performance bad)
+        if (t[-1]-t[0]) <= PLOTTER_WINDOW:
+            ax1.set_xlim([0, PLOTTER_WINDOW-1])
+            
+            xlim1 = ax1.get_xlim()
+            xticks = np.arange( start=plotter_grid_size*floor(xlim1[0]/plotter_grid_size), 
+                                stop =plotter_grid_size*ceil(xlim1[1] /plotter_grid_size), 
+                                step =plotter_grid_size)
+            ax1.set_xticks(xticks)
+        else:
+            ax1.set_xlim([(t[-1]-t[0])-PLOTTER_WINDOW-1, (t[-1]-t[0])-1])
+        
+        # print(ax1.get_xlim())
+        if bool(sum(data[:, -1:].T.squeeze())):
+            ax1.set_ylim([ floor(np.amin(data[:,-round(PLOTTER_WINDOW*sampling_freq_in):], axis=(0,1))*plotter_grid_size)/plotter_grid_size, 
+                            ceil(np.amax(data[:,-round(PLOTTER_WINDOW*sampling_freq_in):], axis=(0,1))*plotter_grid_size)/plotter_grid_size])
+        # print(data.shape)
+        # ax1.set_xticklabels(xticklabels)
+        ax1.grid(True)
+        ax1.yaxis.set_ticks_position("right")
+
+        ax2.clear()
+        ax2.plot([floor((i-t[0])*100)/100 for i in t], data.T)
+        ax2.set_xlabel('time [s]')
+        ax2.set_ylabel('Temperature [C]')
+        ax2.grid(True)
+        ax2.yaxis.set_ticks_position("right")
+        try:
+            ax2.set_xlim([0, floor((max(t) - t[0])*100)/100])
+        except:
+            ax2.set_xlim([0, 1])
+            
+        
+        f.suptitle(fname)
+        
+        plt.pause(0.01)  # required for dynamic plot to work (if too low, nulling performance bad)
 
 duration = datetime.now() - t0
 # Close task to clear connection once done
@@ -316,7 +327,7 @@ ax1.set_xlabel('Time [m]')
 ax1.grid(True)
 
 print(df)
-if savefigFlag and fname != 'monitor':
+if savefigFlag and fname != 'monitor' and fname != 'test':
     plt.savefig(filename + '.png', format='png')
 
 print("Close the window and press ENTER in the Terminal to close program.")
