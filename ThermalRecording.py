@@ -8,7 +8,7 @@ folder = "./recordings/"
 #                  'test' does not save figures, saves data, rewrites data
 
 fname = 'monitor'
-fname = 'test2' 
+# fname = 'stim' 
 sampling_freq_in = 1  # in Hz, limited by hardware and number of channels (may collected duplicate data if to0 high)
 
 PLOTTER_WINDOW = 30 # seconds
@@ -184,7 +184,17 @@ def reading_task_callback(task_idx, event_type, num_samples, callback_data):  # 
                 for ii in range(num_available_channels):
                     f.write(str(data[ii,-1])+', ')
                 f.write('\n')
+        
+        print('\033[F', end='')
+        print('%0.2s' % 't', end='')
+        for ii in range(num_available_channels):
+            print('%8.2s' % CHANNEL_MAP[ii], end='')
+        print('')
 
+        print('%2.2f' % (t[-1]-t[0]), end='')
+        for ii in range(len(data[:,-1])):
+            print('%7.2f ' % data[ii,-1], end='')
+        
     return 0  # Absolutely needed for this callback to be well defined (see nidaqmx doc).
 
 
@@ -217,6 +227,7 @@ thread_user.start()
 
 # Main loop
 running = True
+print('\n\n')
 task.start()
 t0 = datetime.now()
 acquisition_date = t0.strftime('%m/%d/%y')
@@ -240,6 +251,7 @@ f, ax = plt.subplots(2,1)
 ax1 = ax[0]
 ax2 = ax[1]
 
+print('t\t'+'\t'.join(CHANNEL_MAP), end='\n')
 while running and plt.get_fignums():
     if len(t) > 0:
         ax1.clear()
@@ -291,8 +303,10 @@ while running and plt.get_fignums():
             
         
         f.suptitle(fname)
-        
+
         plt.pause(0.01)  # required for dynamic plot to work (if too low, nulling performance bad)
+        # print(str(round(t[-1]-t[0],2))+'\t'+'\t'.join(list(data[:,-1].round(2).astype(str))))
+        
 
 duration = datetime.now() - t0
 # Close task to clear connection once done
@@ -300,7 +314,7 @@ task.close()
 
 #%%
 # Final save data and metadata ... first in python reloadable format:
-
+print('\n')
 import pandas as pd
 print(CHANNEL_MAP)
 print(data.T)
