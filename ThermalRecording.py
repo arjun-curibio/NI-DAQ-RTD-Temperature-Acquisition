@@ -8,7 +8,7 @@ folder = "./recordings/"
 #                  'test' does not save figures, saves data, rewrites data
 
 fname = 'monitor'
-# fname = 'stim' 
+# fname = 'Long Term Stim 4_5 Hz' 
 sampling_freq_in = 1  # in Hz, limited by hardware and number of channels (may collected duplicate data if to0 high)
 
 PLOTTER_WINDOW = 30 # seconds
@@ -251,6 +251,7 @@ f, ax = plt.subplots(2,1)
 ax1 = ax[0]
 ax2 = ax[1]
 
+ylims = [35, 39]
 print('t\t'+'\t'.join(CHANNEL_MAP), end='\n')
 while running and plt.get_fignums():
     if len(t) > 0:
@@ -289,9 +290,10 @@ while running and plt.get_fignums():
         # ax1.set_xticklabels(xticklabels)
         ax1.grid(True)
         ax1.yaxis.set_ticks_position("right")
-
+        
         ax2.clear()
         ax2.plot([floor((i-t[0])*100)/100 for i in t], data.T)
+        ax2.set_ylim(ylims)
         ax2.set_xlabel('time [s]')
         ax2.set_ylabel('Temperature [C]')
         ax2.grid(True)
@@ -303,8 +305,8 @@ while running and plt.get_fignums():
             
         
         f.suptitle(fname)
-
-        plt.pause(0.01)  # required for dynamic plot to work (if too low, nulling performance bad)
+        plt.pause(1)  # required for dynamic plot to work (if too low, nulling performance bad)
+        ylims = ax2.get_ylim()
         # print(str(round(t[-1]-t[0],2))+'\t'+'\t'.join(list(data[:,-1].round(2).astype(str))))
         
 

@@ -9,25 +9,25 @@ filepath = filedialog.askopenfilename(filetypes=[('pickle file','*.pickle')])
 root.destroy()
 
 supname = 'Thermal Management'
-name = 'Magnetometer Recording with Stim'
+name = 'Long Term Stim - Trial 3 (5 Hz)'
 labels = {
-    65: 'Mag\nON',
-    665: 'Mag\nOFF',
+    100: 'Stim\nON',
+    7330: 'Stim\nOFF',
     
 }
-labels = {85: 'Mag\nON',
-          400: 'Mag\nOFF',
-          115: 'Stim\nON',
-          145: 'Stim\nOFF',
-          185: 'Stim\nON',
-          215: 'Stim\nOFF',
-          245: 'Stim\nON',
-          285: 'Stim\nOFF',
-          315: 'Stim\nON',
-          345: 'Stim\nOFF',
+# labels = {85: 'Mag\nON',
+#           400: 'Mag\nOFF',
+#           115: 'Stim\nON',
+#           145: 'Stim\nOFF',
+#           185: 'Stim\nON',
+#           215: 'Stim\nOFF',
+#           245: 'Stim\nON',
+#           285: 'Stim\nOFF',
+#           315: 'Stim\nON',
+#           345: 'Stim\nOFF',
           
-          # 1300: '3' #'Board\nOFF'
-         }
+#           # 1300: '3' #'Board\nOFF'
+#          }
 
 with open(filepath, 'rb') as f:
     fig, label, data, center = pickle.load(f)

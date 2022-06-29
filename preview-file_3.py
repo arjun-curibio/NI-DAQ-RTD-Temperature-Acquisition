@@ -18,45 +18,49 @@ data = pd.read_csv(filepath, index_col=False)
 data.set_index('t', inplace=True)
 data = data.rolling(rolling_window).mean().dropna()
 removing_indices = []
-removing_indices = ['D5','A6','C3']
-removing_indices = ['C3','D6','D5','B4','B3', 'C4']
+# removing_indices = ['D5','A6','C3']
+removing_indices = ['A6', 'D5', 'D6', 'D1','A1']
 for ii in removing_indices:
     data.pop(ii)
+
+plt.ion()
+
+data.plot()
 
 data_clusters = [ # file #1
     50, 670, 1270, 1850, 2450, 3040, 3620, 4220, 4810, 5400, 5990, 6580, 7170]
 
 data_clusters = [ # file #2
-    0, 620, 1220, 1820, 2390, 3000, 3575, 4180, 4770, 5340, 5930, 6540, 7110]
+    0, 670, 1260, 1860, 2450, 3050, 3640, 4230, 4825, 5420, 6010, 6610, 7200, 7400]
 kk=0
-data_clusters = [
-    [50, 80],
-    [100, 155],
-    [180, 220],
-    [240, 290],
-    [310, 355]
-]
-for ii in data_clusters:
-    indices = np.all(np.vstack((data.index >= ii[0], data.index <= ii[1])), axis=0)
-    data.drop(axis=0, index=data.index[indices], inplace=True)
-    kk+=1
-data.plot()
+# data_clusters = [
+#     [50, 80],
+#     [100, 155],
+#     [180, 220],
+#     [240, 290],
+#     [310, 355]
+# ]
+# for ii in data_clusters:
+#     indices = np.all(np.vstack((data.index >= ii[0], data.index <= ii[1])), axis=0)
+#     data.drop(axis=0, index=data.index[indices], inplace=True)
+#     kk+=1
+# data.plot()
 
 # clusters = []
 
 # start_stim = 20
 # interval = 600
 
-# ii=data_clusters[0]
-# indices = np.all(np.vstack((data.index >= (ii+0), data.index <= (ii+10))), axis=0)
-# thermal_stim = pd.DataFrame(data.loc[data.index[indices], :].mean()).transpose()
+ii=data_clusters[0]
+indices = np.all(np.vstack((data.index >= (ii+0), data.index <= (ii+10))), axis=0)
+thermal_stim = pd.DataFrame(data.loc[data.index[indices], :].mean()).transpose()
 
-# for ii in data_clusters[1:]:
-#     indices = np.all(np.vstack((data.index >= (ii+0), data.index <= (ii+10))), axis=0)
-#     thermal_stim = pd.concat((thermal_stim, pd.DataFrame(data.loc[data.index[indices], :].mean()).transpose()))
-#     # thermal_stim.plot()
-# thermal_stim.index = data_clusters
-# data = thermal_stim.copy()
+for ii in data_clusters[1:]:
+    indices = np.all(np.vstack((data.index >= (ii+0), data.index <= (ii+10))), axis=0)
+    thermal_stim = pd.concat((thermal_stim, pd.DataFrame(data.loc[data.index[indices], :].mean()).transpose()))
+    # thermal_stim.plot()
+thermal_stim.index = data_clusters
+data = thermal_stim.copy()
 # for ii in np.arange(start_stim, data.shape[0], interval):
 #     thermal_stim.append(data.loc[data.index[data.index <= ii]])
 
@@ -89,7 +93,7 @@ max_data = data.max(axis=1)
 min_data = data.min(axis=1)
 
 plt.ion()
-data.plot()
+# data.plot()
 
 fig, ax = plt.subplots(1,1)
 ax.axhline(center, linestyle='-', color='black', lw=0.5, label='_nolegend_')
@@ -101,11 +105,11 @@ ax.axhline(37.5, color='green', lw=1, label='_nolegend_')
 #                 color='red', alpha=0.1, label='_nolegend_')
 # ax.fill_between(data.index/60, 37.5*(np.ones((1, len(data.index))).squeeze()), 50*(np.ones((1, len(data.index))).squeeze()),
 #                 color='red', alpha=0.1, label='_nolegend_')
-# ax.errorbar(data.index, mean_data, std_data, fmt='none', capsize=8)
-ax.plot(data.index, mean_data, lw=2, color='blue', linestyle='-')
-ax.fill_between(data.index, mean_data-std_data, mean_data+std_data, color='blue', alpha=0.25)
-ax.plot(data.index, min_data, color='black', linestyle='--', lw=1)
-ax.plot(data.index, max_data, color='black', linestyle='--', lw=1, label='_nolegend_')
+ax.errorbar(data.index, mean_data, std_data, fmt='none', capsize=8)
+ax.plot(data.index, mean_data, 'bo', color='blue', linestyle='-')
+# ax.fill_between(data.index, mean_data-std_data, mean_data+std_data, color='blue', alpha=0.25)
+# ax.plot(data.index, min_data, color='black', linestyle='--', lw=1)
+# ax.plot(data.index, max_data, color='black', linestyle='--', lw=1, label='_nolegend_')
 ax.set_ylim([min([center-1, ceil(min_data.min()-1)]), max([center+1, floor(max_data.max() + 1)])])
 ax.set_xlim([0, max(data.index)])
 plt.legend(['mean (n = '+str(data.shape[1])+')','standard deviation','maximum/minimum'], loc='lower center')
