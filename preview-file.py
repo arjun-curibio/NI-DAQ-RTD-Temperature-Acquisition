@@ -9,6 +9,7 @@ root.withdraw()
 
 filepath = filedialog.askopenfilename()
 df = pd.read_csv(filepath, sep=',', index_col=0, header=3)
-
-df.set_index(pd.Series(df.index)/60, inplace=True)
+plt.ion()
+df.set_index(pd.Series(df.index), inplace=True)
 df.plot()
+plt.title(filepath.split('/')[-1])

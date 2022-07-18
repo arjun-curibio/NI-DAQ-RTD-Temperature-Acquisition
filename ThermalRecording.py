@@ -7,15 +7,16 @@ folder = "./recordings/"
 # setting fname to 'monitor' does not save any data or figures
 #                  'test' does not save figures, saves data, rewrites data
 
-fname = 'monitor'
-# fname = 'Long Term Stim 4_5 Hz' 
+# fname = 'monitor'
+fname = 'LT stim 24_hours_trial 3' 
 sampling_freq_in = 1  # in Hz, limited by hardware and number of channels (may collected duplicate data if to0 high)
 
-PLOTTER_WINDOW = 30 # seconds
+PLOTTER_WINDOW = 15 # seconds
 savefigFlag = True # save the final plot to a separate figure (RECOMMEND TO SET TO TRUE)
 rewriteFlag = False # If you want to re-write file, otherwise append number to filename (RECOMMENDED TO SET TO FALSE)
 
-dontInclude = [] # do not include these channels (in case some are broken or reading false)
+dontInclude = [0,9,11] # do not include these channels (in case some are broken or reading false)
+# dontIn/clude = []
 CHANNEL_MAP = [
     'D1', # 0
     'A1', # 1
@@ -181,13 +182,13 @@ def reading_task_callback(task_idx, event_type, num_samples, callback_data):  # 
         else:
             with open(filename + '.csv', 'a') as f:
                 f.write(str(t[-1] - t[0]) + ',')
-                for ii in range(num_available_channels):
+                for ii in range(chans_in):
                     f.write(str(data[ii,-1])+', ')
                 f.write('\n')
         
         print('\033[F', end='')
         print('%0.2s' % 't', end='')
-        for ii in range(num_available_channels):
+        for ii in range(chans_in):
             print('%8.2s' % CHANNEL_MAP[ii], end='')
         print('')
 
