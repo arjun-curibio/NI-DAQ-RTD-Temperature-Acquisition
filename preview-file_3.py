@@ -18,8 +18,8 @@ data = pd.read_csv(filepath, index_col=False)
 data.set_index('t', inplace=True)
 data = data.rolling(rolling_window).mean().dropna()
 removing_indices = []
-# removing_indices = ['D5','A6','C3']
-removing_indices = ['A6', 'D5', 'D6', 'D1','A1']
+removing_indices = ['D5','A6','C3']
+# removing_indices = []
 for ii in removing_indices:
     data.pop(ii)
 
@@ -31,7 +31,11 @@ data_clusters = [ # file #1
     50, 670, 1270, 1850, 2450, 3040, 3620, 4220, 4810, 5400, 5990, 6580, 7170]
 
 data_clusters = [ # file #2
-    0, 670, 1260, 1860, 2450, 3050, 3640, 4230, 4825, 5420, 6010, 6610, 7200, 7400]
+    0, 720, 1090, 2005, 3480, 3840, 4735, 5695, 6845]
+
+data_clusters = [
+    0,730, 1225, 1905, 2390, 3120, 3620, 4065, 4655, 5280, 6065, 6920
+]
 kk=0
 # data_clusters = [
 #     [50, 80],
@@ -59,6 +63,7 @@ for ii in data_clusters[1:]:
     indices = np.all(np.vstack((data.index >= (ii+0), data.index <= (ii+10))), axis=0)
     thermal_stim = pd.concat((thermal_stim, pd.DataFrame(data.loc[data.index[indices], :].mean()).transpose()))
     # thermal_stim.plot()
+
 thermal_stim.index = data_clusters
 data = thermal_stim.copy()
 # for ii in np.arange(start_stim, data.shape[0], interval):
@@ -77,6 +82,8 @@ if normalized==True:
     center = 0
 else:
     center = 37
+
+
 if data.index[-1] < 120:
     data.set_index(data.index, inplace=True)
     label='seconds'
