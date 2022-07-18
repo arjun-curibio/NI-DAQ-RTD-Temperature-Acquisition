@@ -8,12 +8,12 @@ root.withdraw()
 filepath = filedialog.askopenfilename(filetypes=[('pickle file','*.pickle')])
 root.destroy()
 
-supname = 'Thermal Management'
-name = 'Long Term Stim - Trial 3 (5 Hz)'
+supname = '06/29/22'
+name = 'Long Term Stim - Raised Sensor Board'
+labels = {}
 labels = {
-    100: 'Stim\nON',
-    7330: 'Stim\nOFF',
-    
+    50: 'Stim\nON',
+    6065: 'Stim\nOFF',
 }
 # labels = {85: 'Mag\nON',
 #           400: 'Mag\nOFF',
@@ -37,7 +37,6 @@ if center == 0:
 elif center == 37:
     plt.ylabel('Absolute Temperature (C)', fontsize=14)
 
-
 fig.set_size_inches(7.5, 5.5)
 ax = plt.gca()
 ax.set_title(name, fontsize=16)
@@ -58,11 +57,11 @@ elif label == 'hours':
     divisor = 3600
 else:
     divisor = 60
+
 for ii in list(labels.keys()):
     if 'Stim' in labels[ii]:
         plt.axvline(ii/divisor, 0.1, 0.9, label='_nolegend_', color='orange')
         plt.text(ii/divisor, (plt.ylim()[1]-plt.ylim()[0])*0.9+plt.ylim()[0], labels[ii],  fontsize=12, ha='center', va='bottom', color='black')
-
     elif 'Mag' in labels[ii]:
         plt.axvline(ii/divisor, 0.1, 0.9, label='_nolegend_', color='red')
         plt.text(ii/divisor, (plt.ylim()[1]-plt.ylim()[0])*0.9+plt.ylim()[0], labels[ii],  fontsize=14, ha='center', va='bottom', color='black')
