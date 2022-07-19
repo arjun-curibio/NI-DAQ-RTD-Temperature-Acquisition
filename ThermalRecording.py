@@ -8,14 +8,16 @@ folder = "./recordings/"
 #                  'test' does not save figures, saves data, rewrites data
 
 # fname = 'monitor'
-fname = 'LT stim 24_hours_trial 3' 
+fname = 'LT stim 24_hours_trial 4' 
+fname = 'test'
 sampling_freq_in = 1  # in Hz, limited by hardware and number of channels (may collected duplicate data if to0 high)
 
-PLOTTER_WINDOW = 15 # seconds
+PLOTTER_WINDOW = 30 # seconds
+DATA_WINDOW = 10 # seconds
 savefigFlag = True # save the final plot to a separate figure (RECOMMEND TO SET TO TRUE)
 rewriteFlag = False # If you want to re-write file, otherwise append number to filename (RECOMMENDED TO SET TO FALSE)
 
-dontInclude = [0,9,11] # do not include these channels (in case some are broken or reading false)
+dontInclude = [0,1,9,11] # do not include these channels (in case some are broken or reading false)
 # dontIn/clude = []
 CHANNEL_MAP = [
     'D1', # 0
@@ -65,6 +67,7 @@ from time import time
 from os.path import exists
 
 import pandas as pd
+from pyrsistent import b
 
 # Parameters
 buffer_in_size = 1 # number of samples to collect on each channel to store in buffer before sending to computer
@@ -157,12 +160,13 @@ def cfg_read_task():  # uses above parameters
     
     return task
                     
-
-
+t_start = 0
+beginning = True
 def reading_task_callback(task_idx, event_type, num_samples, callback_data):  # bufsize_callback is passed to num_samples
     global data
     global buffer_in
     global t
+    global t_start
     global task
     global re_index
     if running: 
@@ -174,14 +178,30 @@ def reading_task_callback(task_idx, event_type, num_samples, callback_data):  # 
         # while (buffer_in == data[-1,:]).any():
         #     # print('in buffer')
         #     stream_in.read_many_sample(buffer_in, num_samples, timeout=constants.WAIT_INFINITELY)
-        
+        # print(data.shape)
         data = np.append(data, buffer_in[re_index,:], axis=1)  # appends buffered data to total variable data
+        if data.shape[1] >= DATA_WINDOW+1:
+            data = np.delete(data, 0, axis=1)
+        # data = np.delete(data, [i for i in range(0,data.shape[1]-15)], axis=1)
         t.append(time())
+        if len(t) <= DATA_WINDOW:
+            beginning = True
+            t_start = t[0]
+        else:
+            beginning = False
+            for i in range(0, len(t) - DATA_WINDOW):
+                t.pop(0)
+        
+        # print(t.shape)
+        # print(t_start)
+        # if t.shape[0] == 3:
+        #     t_start = t[3]
+        # t = np.delete(t, [i for i in range(0,data.shape[1]-15)])
         if fname == 'monitor':
             pass
         else:
             with open(filename + '.csv', 'a') as f:
-                f.write(str(t[-1] - t[0]) + ',')
+                f.write(str(t[-1] - t_start) + ',')
                 for ii in range(chans_in):
                     f.write(str(data[ii,-1])+', ')
                 f.write('\n')
@@ -192,7 +212,7 @@ def reading_task_callback(task_idx, event_type, num_samples, callback_data):  # 
             print('%8.2s' % CHANNEL_MAP[ii], end='')
         print('')
 
-        print('%2.2f' % (t[-1]-t[0]), end='')
+        print('%2.2f' % (t[-1]-t_start), end='')
         for ii in range(len(data[:,-1])):
             print('%7.2f ' % data[ii,-1], end='')
         
@@ -248,66 +268,67 @@ if fname != 'monitor':
         f.write('\n')
 
 # Plot a visual feedback for the user's mental health
-f, ax = plt.subplots(2,1)
-ax1 = ax[0]
-ax2 = ax[1]
+f, ax = plt.subplots(1,1)
+# ax = ax[0]
+# ax2 = ax[1]
 
 ylims = [35, 39]
 print('t\t'+'\t'.join(CHANNEL_MAP), end='\n')
 while running and plt.get_fignums():
     if len(t) > 0:
-        ax1.clear()
+        ax.clear()
 
-        ax1.plot([round(i-t[0],2) for i in t], data.T[:,-PLOTTER_WINDOW:])
-        ax1.legend(CHANNEL_MAP, loc='upper left', ncol=2)
+        ax.plot([round(i-t_start,2) for i in t], data.T[:,-PLOTTER_WINDOW:])
+        ax.set_ylim(ylims)
+        ax.legend(CHANNEL_MAP, loc='upper left', ncol=2)
         # Label and axis formatting
         # ax1.set_xlabel('time [s]')
-        ax1.set_ylabel('Temperature [C]')
+        ax.set_ylabel('Temperature [C]')
         
-        xlim1 = ax1.get_xlim()
+        xlim1 = ax.get_xlim()
         xticks = np.arange( start=plotter_grid_size*floor(xlim1[0]/plotter_grid_size), 
                             stop =plotter_grid_size*ceil(xlim1[1] /plotter_grid_size), 
                             step =plotter_grid_size)
         # xticklabels = np.arange(0, xticks.size, 1)
-        ax1.set_xticks(xticks)
+        ax.set_xticks(xticks)
         # print(t)
         
-        if (t[-1]-t[0]) <= PLOTTER_WINDOW:
-            ax1.set_xlim([0, PLOTTER_WINDOW-1])
+        if (t[-1]-t_start) <= PLOTTER_WINDOW:
+            ax.set_xlim([0, PLOTTER_WINDOW-1])
             
-            xlim1 = ax1.get_xlim()
+            xlim1 = ax.get_xlim()
             xticks = np.arange( start=plotter_grid_size*floor(xlim1[0]/plotter_grid_size), 
                                 stop =plotter_grid_size*ceil(xlim1[1] /plotter_grid_size), 
                                 step =plotter_grid_size)
-            ax1.set_xticks(xticks)
+            ax.set_xticks(xticks)
         else:
-            ax1.set_xlim([(t[-1]-t[0])-PLOTTER_WINDOW-1, (t[-1]-t[0])-1])
+            ax.set_xlim([(t[-1]-t_start)-PLOTTER_WINDOW-1, (t[-1]-t_start)-1])
         
-        # print(ax1.get_xlim())
-        if bool(sum(data[:, -1:].T.squeeze())):
-            ax1.set_ylim([ floor(np.amin(data[:,-round(PLOTTER_WINDOW*sampling_freq_in):], axis=(0,1))*plotter_grid_size)/plotter_grid_size, 
-                            ceil(np.amax(data[:,-round(PLOTTER_WINDOW*sampling_freq_in):], axis=(0,1))*plotter_grid_size)/plotter_grid_size])
+        # print(ax.get_xlim())
+        # if bool(sum(data[:, -1:].T.squeeze())):
+        #     ax.set_ylim([ floor(np.amin(data[:,-round(PLOTTER_WINDOW*sampling_freq_in):], axis=(0,1))*plotter_grid_size)/plotter_grid_size, 
+        #                     ceil(np.amax(data[:,-round(PLOTTER_WINDOW*sampling_freq_in):], axis=(0,1))*plotter_grid_size)/plotter_grid_size])
         # print(data.shape)
-        # ax1.set_xticklabels(xticklabels)
-        ax1.grid(True)
-        ax1.yaxis.set_ticks_position("right")
+        # ax.set_xticklabels(xticklabels)
+        ax.grid(True)
+        ax.yaxis.set_ticks_position("right")
         
-        ax2.clear()
-        ax2.plot([floor((i-t[0])*100)/100 for i in t], data.T)
-        ax2.set_ylim(ylims)
-        ax2.set_xlabel('time [s]')
-        ax2.set_ylabel('Temperature [C]')
-        ax2.grid(True)
-        ax2.yaxis.set_ticks_position("right")
-        try:
-            ax2.set_xlim([0, floor((max(t) - t[0])*100)/100])
-        except:
-            ax2.set_xlim([0, 1])
+        # ax2.clear()
+        # ax2.plot([floor((i-t[0])*100)/100 for i in t], data.T)
+        # ax2.set_ylim(ylims)
+        # ax2.set_xlabel('time [s]')
+        # ax2.set_ylabel('Temperature [C]')
+        # ax2.grid(True)
+        # ax2.yaxis.set_ticks_position("right")
+        # try:
+        #     ax2.set_xlim([0, floor((max(t) - t[0])*100)/100])
+        # except:
+        #     ax2.set_xlim([0, 1])
             
         
         f.suptitle(fname)
         plt.pause(1)  # required for dynamic plot to work (if too low, nulling performance bad)
-        ylims = ax2.get_ylim()
+        ylims = ax.get_ylim()
         # print(str(round(t[-1]-t[0],2))+'\t'+'\t'.join(list(data[:,-1].round(2).astype(str))))
         
 
@@ -334,14 +355,14 @@ print("Acquired samples: {}.".format(num_samples_acquired - 1))
 
 # Final plot of whole time course the acquisition
 plt.close('all')
-f_tot, ax1 = plt.subplots(1, 1, sharex='all', sharey='none')
-ax1.plot(np.arange(0, data.shape[1], 1)/60, data.T)  
+f_tot, ax = plt.subplots(1, 1, sharex='all', sharey='none')
+ax.plot(np.arange(0, data.shape[1], 1)/60, data.T)  
 
 # Label formatting ...
-ax1.legend(CHANNEL_MAP)
-ax1.set_ylabel('Temperature [C]')
-ax1.set_xlabel('Time [m]')
-ax1.grid(True)
+ax.legend(CHANNEL_MAP)
+ax.set_ylabel('Temperature [C]')
+ax.set_xlabel('Time [m]')
+ax.grid(True)
 
 print(df)
 if savefigFlag and fname != 'monitor' and fname != 'test':
