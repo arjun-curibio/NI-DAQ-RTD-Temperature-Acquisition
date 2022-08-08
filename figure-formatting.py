@@ -8,12 +8,12 @@ root.withdraw()
 filepath = filedialog.askopenfilename(filetypes=[('pickle file','*.pickle')])
 root.destroy()
 
-supname = '06/29/22'
-name = 'Long Term Stim - Raised Sensor Board'
+supname = '08/04/22'
+name = 'COOLING PLATE - 3D PRINTED - STIM - 2Hz, 50mA, 10ms'
 labels = {}
 labels = {
-    50: 'Stim\nON',
-    6065: 'Stim\nOFF',
+    0: 'Stim\nON',
+    8700: 'Stim\nOFF',
 }
 # labels = {85: 'Mag\nON',
 #           400: 'Mag\nOFF',
@@ -32,15 +32,21 @@ labels = {
 with open(filepath, 'rb') as f:
     fig, label, data, center = pickle.load(f)
 
+
+fig1 = plt.figure()
+manager = fig1.canvas.manager
+manager.canvas.figure = fig
+fig.set_canvas(manager.canvas)
+fig.show()
+fig.set_size_inches(7.5, 5.5)
+ax = plt.gca()
+ax.set_title(name, fontsize=16)
+# fig.axes[0].set_frame_on(False)
 if center == 0:
     plt.ylabel('Temperature Difference, from Baseline (C)', fontsize=14)
 elif center == 37:
     plt.ylabel('Absolute Temperature (C)', fontsize=14)
 
-fig.set_size_inches(7.5, 5.5)
-ax = plt.gca()
-ax.set_title(name, fontsize=16)
-# fig.axes[0].set_frame_on(False)
 plt.grid(True)
 plt.xticks(fontsize=12)
 plt.yticks(fontsize=12)

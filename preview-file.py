@@ -7,8 +7,9 @@ from tkinter import filedialog
 root = tk.Tk()
 root.withdraw()
 
-filepath = filedialog.askopenfilename()
-df = pd.read_csv(filepath, sep=',', index_col=0, header=3)
+filepath = filedialog.askopenfilename(filetypes=[('CSV','*.csv')])
+df = pd.read_csv(filepath, index_col=False)
+df.set_index('t', inplace=True)
 plt.ion()
 df.set_index(pd.Series(df.index), inplace=True)
 df.plot()

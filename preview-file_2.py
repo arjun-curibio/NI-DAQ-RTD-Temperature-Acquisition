@@ -7,7 +7,7 @@ from math import floor, ceil
 import pickle
 
 normalized = True
-rolling_window = 5 # [seconds]
+rolling_window = 30 # [seconds]
 
 
 root = tk.Tk()
@@ -18,7 +18,8 @@ root.destroy()
 data = pd.read_csv(filepath, index_col=False)
 data.set_index('t', inplace=True)
 # removing_indices = ['D5','A6','B3','C3']
-removing_indices = ['D6','C4', 'C3', 'A6','D5', 'B3']
+# removing_indices = ['D6','C4', 'C3', 'A6','D5', 'B3']
+removing_indices = []
 for ii in removing_indices:
     data.pop(ii)
 data.plot()
@@ -49,14 +50,11 @@ min_data = data.min(axis=1)
 plt.ion()
 fig, ax = plt.subplots(1,1)
 ax.axhline(center, linestyle='-', color='black', lw=0.5, label='_nolegend_')
-ax.fill_between(data.index, (center-0.5)*(np.ones((1, len(data.index))).squeeze()), (center+0.5)*(np.ones((1, len(data.index))).squeeze()),
-                color='green', alpha=0.1, label='_nolegend_')
+ax.fill_between(data.index, (center-0.5)*(np.ones((1, len(data.index))).squeeze()), (center+0.5)*(np.ones((1, len(data.index))).squeeze()),color='green', alpha=0.1, label='_nolegend_')
 ax.axhline(36.5, color='green', lw=1, label='_nolegend_')
 ax.axhline(37.5, color='green', lw=1, label='_nolegend_')
-# ax.fill_between(data.index/60, 0*(np.ones((1, len(data.index))).squeeze()), 36.5*(np.ones((1, len(data.index))).squeeze()),
-#                 color='red', alpha=0.1, label='_nolegend_')
-# ax.fill_between(data.index/60, 37.5*(np.ones((1, len(data.index))).squeeze()), 50*(np.ones((1, len(data.index))).squeeze()),
-#                 color='red', alpha=0.1, label='_nolegend_')
+# ax.fill_between(data.index/60, 0*(np.ones((1, len(data.index))).squeeze()), 36.5*(np.ones((1, len(data.index))).squeeze()),color='red', alpha=0.1, label='_nolegend_')
+# ax.fill_between(data.index/60, 37.5*(np.ones((1, len(data.index))).squeeze()), 50*(np.ones((1, len(data.index))).squeeze()),color='red', alpha=0.1, label='_nolegend_')
 ax.plot(data.index, mean_data, lw=2, color='blue')
 ax.fill_between(data.index, mean_data-std_data, mean_data+std_data, color='blue', alpha=0.25)
 ax.plot(data.index, min_data, color='black', linestyle='--', lw=1)

@@ -18,7 +18,7 @@ data = pd.read_csv(filepath, index_col=False)
 data.set_index('t', inplace=True)
 data = data.rolling(rolling_window).mean().dropna()
 removing_indices = []
-removing_indices = ['D5','A6','C3']
+# removing_indices = ['D5','A6','C3']
 # removing_indices = []
 for ii in removing_indices:
     data.pop(ii)
@@ -36,6 +36,8 @@ data_clusters = [ # file #2
 data_clusters = [
     0,730, 1225, 1905, 2390, 3120, 3620, 4065, 4655, 5280, 6065, 6920
 ]
+
+data_clusters = [0,600, 1000, 1600, 2200, 2800, 3350, 3900, 4500, 6900, 7500, 8100, 8700, ]
 kk=0
 # data_clusters = [
 #     [50, 80],
@@ -104,8 +106,7 @@ plt.ion()
 
 fig, ax = plt.subplots(1,1)
 ax.axhline(center, linestyle='-', color='black', lw=0.5, label='_nolegend_')
-ax.fill_between(data.index, (center-0.5)*(np.ones((1, len(data.index))).squeeze()), (center+0.5)*(np.ones((1, len(data.index))).squeeze()),
-                color='green', alpha=0.1, label='_nolegend_')
+ax.fill_between(data.index, (center-0.5)*(np.ones((1, len(data.index))).squeeze()), (center+0.5)*(np.ones((1, len(data.index))).squeeze()),color='green', alpha=0.1, label='_nolegend_')
 ax.axhline(36.5, color='green', lw=1, label='_nolegend_')
 ax.axhline(37.5, color='green', lw=1, label='_nolegend_')
 # ax.fill_between(data.index/60, 0*(np.ones((1, len(data.index))).squeeze()), 36.5*(np.ones((1, len(data.index))).squeeze()),
