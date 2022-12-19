@@ -19,7 +19,7 @@ data = pd.read_csv(filepath, index_col=False)
 data.set_index('t', inplace=True)
 # removing_indices = ['D5','A6','B3','C3']
 # removing_indices = ['D6','C4', 'C3', 'A6','D5', 'B3']
-removing_indices = []
+removing_indices = ['D2']
 for ii in removing_indices:
     data.pop(ii)
 data.plot()

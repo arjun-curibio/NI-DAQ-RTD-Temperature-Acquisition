@@ -1,15 +1,27 @@
 """
-Analog data acquisition for QuSpin's OPMs via National Instruments' cDAQ unit
+Temperature Data Acquisition, for NIDAQ.  Data logger for thermal acquisition for Mantarray V1.  
+Records data to .csv file, stored locally.
+Acquisition information is stored in companion .txt file, stored locally.
+If the recording exist normally, a snapshot figure is saved and stored locally.
+
 The following assumes:
+    A persistent task called "MyTemperatureTask" has been created in the NiMAX software, and stored locally.
+
+The following must be changed in the file, locally:
+    CHANNEL_MAP - well number or label for each channel
+    CHANNEL_NAMES - must match the names of the CDAQs and channels in "MyTemperatureTask"
+    fname and folder
+
 """
-folder = "./recordings/"
 
 # setting fname to 'monitor' does not save any data or figures
-#                  'test' does not save figures, saves data, rewrites data
+#               to 'test' does not save figures, saves data, rewrites data in test.csv
 
 # fname = 'monitor'
 fname = 'LT stim 24_hours_trial 4' 
 fname = 'test'
+folder = "test"
+
 sampling_freq_in = 1  # in Hz, limited by hardware and number of channels (may collected duplicate data if to0 high)
 
 PLOTTER_WINDOW = 30 # seconds
@@ -69,6 +81,8 @@ from os.path import exists
 import pandas as pd
 from pyrsistent import b
 
+import os
+
 # Parameters
 buffer_in_size = 1 # number of samples to collect on each channel to store in buffer before sending to computer
 bufsize_callback = buffer_in_size
@@ -77,12 +91,16 @@ chans_in = len(CHANNEL_NAMES)-len(dontInclude)  # set to number of active OPMs
 refresh_rate_plot = 10  # in Hz
 crop = 0  # number of seconds to drop at acquisition start before saving
 
+if os.path.exists(os.getcwd()+'\\recordings\\'+folder):
+    folder = os.getcwd()+'\\recordings\\'+folder
+    pass
+else:
+    os.mkdir(os.getcwd()+'\\recordings\\'+folder)
+    folder = os.getcwd()+'\\recordings\\'+folder
 
 plotter_grid_size = 5
 # fname = 'test'
-my_filename = folder + fname
-
-print(' ')
+my_filename = folder +'\\'+ fname
 
 # print(my_filename)
 print(' ')

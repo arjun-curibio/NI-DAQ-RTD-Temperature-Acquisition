@@ -8,12 +8,12 @@ root.withdraw()
 filepath = filedialog.askopenfilename(filetypes=[('pickle file','*.pickle')])
 root.destroy()
 
-supname = '08/04/22'
-name = 'COOLING PLATE - 3D PRINTED - STIM - 2Hz, 50mA, 10ms'
+supname = '08/20/22'
+name = 'COOLING PLATE - Aluminum - Stim - 5Hz - 10 ms - 50 mA'
 labels = {}
 labels = {
-    0: 'Stim\nON',
-    8700: 'Stim\nOFF',
+    30: 'Stim\nON',
+    21550: 'Stim\nOFF',
 }
 # labels = {85: 'Mag\nON',
 #           400: 'Mag\nOFF',
@@ -33,10 +33,10 @@ with open(filepath, 'rb') as f:
     fig, label, data, center = pickle.load(f)
 
 
-fig1 = plt.figure()
-manager = fig1.canvas.manager
-manager.canvas.figure = fig
-fig.set_canvas(manager.canvas)
+# fig1 = plt.figure()
+# manager = fig1.canvas.manager
+# manager.canvas.figure = fig
+# fig.set_canvas(manager.canvas)
 fig.show()
 fig.set_size_inches(7.5, 5.5)
 ax = plt.gca()
