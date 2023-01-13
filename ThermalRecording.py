@@ -19,48 +19,21 @@ The following must be changed in the file, locally:
 
 # fname = 'monitor'
 fname = 'LT stim 24_hours_trial 4' 
-fname = 'test'
+fname = 'saving_test'
 folder = "test"
 
 sampling_freq_in = 1  # in Hz, limited by hardware and number of channels (may collected duplicate data if to0 high)
-
-PLOTTER_WINDOW = 30 # seconds
-DATA_WINDOW = 10 # seconds
+taskName = "MyTemperatureTask"
+PLOTTER_WINDOW = 10 # seconds
+DATA_WINDOW = PLOTTER_WINDOW*sampling_freq_in
+plotter_grid_size = 5
 savefigFlag = True # save the final plot to a separate figure (RECOMMEND TO SET TO TRUE)
 rewriteFlag = False # If you want to re-write file, otherwise append number to filename (RECOMMENDED TO SET TO FALSE)
 
-dontInclude = [0,1,9,11] # do not include these channels (in case some are broken or reading false)
-# dontIn/clude = []
-CHANNEL_MAP = [
-    'D1', # 0
-    'A1', # 1
-    'D2', # 2
-    'A2', # 3
-    'C3', # 4
-    'B3', # 5
-    'C4', # 6
-    'B4', # 7
-    'A5', # 8
-    'D5', # 9
-    'A6', # 10
-    'D6'  # 11
-]
-CHANNEL_NAMES = [
-    'cDAQ1Mod1/ai0', # 0
-    'cDAQ1Mod1/ai1', # 1
-    'cDAQ1Mod1/ai2', # 2
-    'cDAQ1Mod1/ai3', # 3
-    'cDAQ1Mod2/ai0', # 4
-    'cDAQ1Mod2/ai1', # 5
-    'cDAQ1Mod2/ai2', # 6
-    'cDAQ1Mod2/ai3', # 7
-    'cDAQ1Mod2/ai4', # 8
-    'cDAQ1Mod2/ai5', # 9
-    'cDAQ1Mod2/ai6', # 10
-    'cDAQ1Mod2/ai7', # 11
-    
-]
-
+# dontInclude = [0,1,9,11] 
+dontInclude = ['B1','C3'] # do not include these channels (in case some are broken or reading false)
+dontInclude = []
+buffer_in_size = 1 # number of samples to collect on each channel to store in buffer before sending to computer
 
 # Imports
 import matplotlib.pyplot as plt
@@ -70,6 +43,8 @@ from math import floor, ceil
 import nidaqmx
 from nidaqmx.stream_readers import AnalogMultiChannelReader
 from nidaqmx import constants, system
+from nidaqmx.system.storage.persisted_task import PersistedTask
+
 # from nidaqmx import stream_readers  # not needed in this script
 # from nidaqmx import stream_writers  # not needed in this script
 
@@ -82,312 +57,123 @@ import pandas as pd
 from pyrsistent import b
 
 import os
-
+from nidaqmx_functions import *
 # Parameters
-buffer_in_size = 1 # number of samples to collect on each channel to store in buffer before sending to computer
 bufsize_callback = buffer_in_size
 buffer_in_size_cfg = round(buffer_in_size * 1)  # clock configuration
-chans_in = len(CHANNEL_NAMES)-len(dontInclude)  # set to number of active OPMs
+
+task, CHANNEL_ADDRESSES, CHANNEL_NAMES, TOTAL_CHANNELS, Include_idx = cfg_read_task(taskName, sampling_freq_in, buffer_in_size_cfg, dontInclude = dontInclude)
+
+finalFileName, rewriteFlag = fullFileName(folder, fname, CHANNEL_ADDRESSES, CHANNEL_NAMES, sampling_freq_in)
+
+chans_in = len(Include_idx)  # set to number of active OPMs
 refresh_rate_plot = 10  # in Hz
 crop = 0  # number of seconds to drop at acquisition start before saving
 
-if os.path.exists(os.getcwd()+'\\recordings\\'+folder):
-    folder = os.getcwd()+'\\recordings\\'+folder
-    pass
-else:
-    os.mkdir(os.getcwd()+'\\recordings\\'+folder)
-    folder = os.getcwd()+'\\recordings\\'+folder
+i=0
 
-plotter_grid_size = 5
-# fname = 'test'
-my_filename = folder +'\\'+ fname
-
-# print(my_filename)
-print(' ')
-
-if fname == 'test':
-    rewriteFlag = True
-
-filename = my_filename
-if rewriteFlag == False:
-    ii=0
-    while exists(filename + '.csv'):
-        filename = my_filename + str(ii)
-        ii += 1
-print(filename+'\n\n')
 # Initialize data placeholders
-buffer_in = np.zeros((chans_in, buffer_in_size))
+buffer_in = np.zeros((TOTAL_CHANNELS, buffer_in_size))
 data = np.zeros((chans_in, 0))
-t = []
+t = np.zeros((1,0))
 re_index = []
-# Definitions of basic functions
-def ask_user():
-    global running
-    input("Close window to stop acquisition.\n")
-    running = False
 
-def cfg_devices():
-    devices = system.System.local().devices
-    # print(list(devices))
-    for i in devices:
-        i.ai_min_rate = 1
-        # print(i.ai_physical_chans)
-        for j in i.ai_physical_chans:
-            # print(j)
-            j.ai_adc_timing_mode = constants.ADCTimingMode.HIGH_SPEED
-    return devices
-
-def cfg_read_task():  # uses above parameters
-    global task
-    global re_index
-    # task = nidaqmx.Task()
-    task=system.storage.persisted_task.PersistedTask('MyTemperatureTask').load()
-    chans = list(task.ai_channels)
-    channels_available = []
-    for chan in chans:
-        # print(chan.physical_channel.name)
-        channels_available.append(chan.physical_channel.name)
-    print(channels_available)
-    re_index = []
-    for ii in range(chans_in):
-        re_index.append(channels_available.index(CHANNEL_NAMES[ii]))
-    
-    print(re_index)
-    print([channels_available[i] for i in re_index])
-    
-        
-    # DAQtask=task.load()
-    # constants.ADCTimingMode.HIGH_SPEED
-    # for ii in range(chans_in):
-    #     print(CHANNEL_NAMES[ii])
-    #     task.ai_channels.add_ai_rtd_chan(CHANNEL_NAMES[ii],
-    #         current_excit_source=constants.ExcitationSource.INTERNAL, 
-    #     current_excit_val=0.001, 
-    #     resistance_config=constants.ResistanceConfiguration.FOUR_WIRE,
-    #     rtd_type=constants.RTDType.PT_3750,
-    #     min_val=20, max_val=50)
-    
-    task.timing.cfg_samp_clk_timing(rate=sampling_freq_in, sample_mode=constants.AcquisitionType.CONTINUOUS,
-      samps_per_chan=buffer_in_size_cfg)
-    # task.timing.ai_conv_rate = 1
-    for chan in task.channels:
-        # chan.ai_adc_timing_mode = constants.ADCTimingMode.HIGH_SPEED
-        print(chan.ai_adc_timing_mode, end=', ')
-        pass
-        
-    
-    return task
-                    
-t_start = 0
-beginning = True
+t0 = time()
+gotData = False
 def reading_task_callback(task_idx, event_type, num_samples, callback_data):  # bufsize_callback is passed to num_samples
     global data
     global buffer_in
     global t
-    global t_start
     global task
-    global re_index
+    global gotData
+    global Include_idx
     if running: 
-        # It may be wiser to read slightly more than num_samples here, to make sure one does not miss any sample,
-        # see: https://documentation.help/NI-DAQmx-Key-Concepts/contCAcqGen.html
-        num_available_channels = len(list(task.ai_channels))
-        buffer_in = np.zeros((num_available_channels, num_samples))  # double definition ???
+        num_available_channels = len(CHANNEL_NAMES)
         stream_in.read_many_sample(buffer_in, num_samples, timeout=constants.WAIT_INFINITELY)
-        # while (buffer_in == data[-1,:]).any():
-        #     # print('in buffer')
-        #     stream_in.read_many_sample(buffer_in, num_samples, timeout=constants.WAIT_INFINITELY)
-        # print(data.shape)
-        data = np.append(data, buffer_in[re_index,:], axis=1)  # appends buffered data to total variable data
-        if data.shape[1] >= DATA_WINDOW+1:
+        data    = np.append(data, buffer_in[Include_idx,:], axis=1)  # appends buffered data to total variable data
+        t       = np.append(t,(time()-t0))
+        if data.shape[1] >= DATA_WINDOW+1: # CIRCULAR BUFFER
+            t = np.delete(t, 0)
             data = np.delete(data, 0, axis=1)
-        # data = np.delete(data, [i for i in range(0,data.shape[1]-15)], axis=1)
-        t.append(time())
-        if len(t) <= DATA_WINDOW:
-            beginning = True
-            t_start = t[0]
-        else:
-            beginning = False
-            for i in range(0, len(t) - DATA_WINDOW):
-                t.pop(0)
-        
-        # print(t.shape)
-        # print(t_start)
-        # if t.shape[0] == 3:
-        #     t_start = t[3]
-        # t = np.delete(t, [i for i in range(0,data.shape[1]-15)])
-        if fname == 'monitor':
-            pass
-        else:
-            with open(filename + '.csv', 'a') as f:
-                f.write(str(t[-1] - t_start) + ',')
-                for ii in range(chans_in):
-                    f.write(str(data[ii,-1])+', ')
-                f.write('\n')
-        
-        print('\033[F', end='')
-        print('%0.2s' % 't', end='')
-        for ii in range(chans_in):
-            print('%8.2s' % CHANNEL_MAP[ii], end='')
-        print('')
 
-        print('%2.2f' % (t[-1]-t_start), end='')
-        for ii in range(len(data[:,-1])):
-            print('%7.2f ' % data[ii,-1], end='')
+        while t.shape[0] > data.shape[1]:
+            t = np.delete(t, 0)
+            
+        if fname != 'monitor':
+            with open(finalFileName + '.csv', 'a') as f:
+                string = "{}, ".format(round(t[-1],2))
+                for ii in range(data.shape[0]):
+                    string += "{}, ".format(data[ii,-1].round(2))
+                string += "\n"
+                f.write(string)
+                
         
+    gotData = True
     return 0  # Absolutely needed for this callback to be well defined (see nidaqmx doc).
 
 
-# Configure and setup the tasks
-
-dontInclude.sort(reverse=True)
-for ii in dontInclude:
-    CHANNEL_NAMES.pop(ii)
-    CHANNEL_MAP.pop(ii)
-
-# at this stage, CHANNEL_NAMES and CHANNEL_MAP have only the channels wished to be included
-# chans_in <= 12
-
-task = cfg_read_task()
-
-if fname == 'monitor':
-    pass
-else:
-    with open(filename + '.csv', 'w') as f:
-        f.write('t,'+','.join(CHANNEL_MAP) + '\n')
-
 stream_in = AnalogMultiChannelReader(task.in_stream)
 task.register_every_n_samples_acquired_into_buffer_event(bufsize_callback, reading_task_callback)
-
 
 # Start threading to prompt user to stop
 thread_user = threading.Thread(target=ask_user)
 thread_user.start()
 
-
 # Main loop
 running = True
-print('\n\n')
 task.start()
-t0 = datetime.now()
-acquisition_date = t0.strftime('%m/%d/%y')
-acquisition_start_time = t0.strftime('%H:%M:%S')
+t0 = time()
 
-# Save Metadata to <filename>_info.txt
-if fname != 'monitor':
-    with open(filename + '_info.txt', 'a') as f:
-        f.write('Acquisition Date: ' + acquisition_date + '\n')
-        f.write('Acquisition Start Time: ' + acquisition_start_time+ '\n')
-        f.write('Sampling rate: ' + str(sampling_freq_in) + ' Hz'+ '\n')
-        f.write('Number of RTD elements: ' + str(chans_in)+ '\n')
-        f.write('\n')
-        f.write('Channel Mapping:\n')
-        for ii in range(chans_in):
-            f.write('Channel '+str(CHANNEL_NAMES[ii])+' --> Well '+str(CHANNEL_MAP[ii]+'\n'))
-        f.write('\n')
-
-# Plot a visual feedback for the user's mental health
+# # Plot a visual feedback for the user's mental health
 f, ax = plt.subplots(1,1)
-# ax = ax[0]
-# ax2 = ax[1]
 
-ylims = [35, 39]
-print('t\t'+'\t'.join(CHANNEL_MAP), end='\n')
+print('\n\n')
+print("{:>10}|".format('  t (s) '), end='')
+for i in range(len(CHANNEL_NAMES)):
+    print("{:^7.2}".format(CHANNEL_NAMES[i]), end='')
+print('\n')
 while running and plt.get_fignums():
     if len(t) > 0:
-        ax.clear()
-
-        ax.plot([round(i-t_start,2) for i in t], data.T[:,-PLOTTER_WINDOW:])
-        ax.set_ylim(ylims)
-        ax.legend(CHANNEL_MAP, loc='upper left', ncol=2)
-        # Label and axis formatting
-        # ax1.set_xlabel('time [s]')
-        ax.set_ylabel('Temperature [C]')
-        
-        xlim1 = ax.get_xlim()
-        xticks = np.arange( start=plotter_grid_size*floor(xlim1[0]/plotter_grid_size), 
-                            stop =plotter_grid_size*ceil(xlim1[1] /plotter_grid_size), 
-                            step =plotter_grid_size)
-        # xticklabels = np.arange(0, xticks.size, 1)
-        ax.set_xticks(xticks)
-        # print(t)
-        
-        if (t[-1]-t_start) <= PLOTTER_WINDOW:
-            ax.set_xlim([0, PLOTTER_WINDOW-1])
-            
-            xlim1 = ax.get_xlim()
-            xticks = np.arange( start=plotter_grid_size*floor(xlim1[0]/plotter_grid_size), 
-                                stop =plotter_grid_size*ceil(xlim1[1] /plotter_grid_size), 
-                                step =plotter_grid_size)
-            ax.set_xticks(xticks)
-        else:
-            ax.set_xlim([(t[-1]-t_start)-PLOTTER_WINDOW-1, (t[-1]-t_start)-1])
-        
-        # print(ax.get_xlim())
-        # if bool(sum(data[:, -1:].T.squeeze())):
-        #     ax.set_ylim([ floor(np.amin(data[:,-round(PLOTTER_WINDOW*sampling_freq_in):], axis=(0,1))*plotter_grid_size)/plotter_grid_size, 
-        #                     ceil(np.amax(data[:,-round(PLOTTER_WINDOW*sampling_freq_in):], axis=(0,1))*plotter_grid_size)/plotter_grid_size])
-        # print(data.shape)
-        # ax.set_xticklabels(xticklabels)
-        ax.grid(True)
-        ax.yaxis.set_ticks_position("right")
-        
-        # ax2.clear()
-        # ax2.plot([floor((i-t[0])*100)/100 for i in t], data.T)
-        # ax2.set_ylim(ylims)
-        # ax2.set_xlabel('time [s]')
-        # ax2.set_ylabel('Temperature [C]')
-        # ax2.grid(True)
-        # ax2.yaxis.set_ticks_position("right")
-        # try:
-        #     ax2.set_xlim([0, floor((max(t) - t[0])*100)/100])
-        # except:
-        #     ax2.set_xlim([0, 1])
+        if gotData == True: # gotData is set in reading callback
+            ax = updatePlot(f, ax, t, data, CHANNEL_NAMES, plotter_grid_size = 5, ylims = [35, 39], window = PLOTTER_WINDOW)
+            print("\033[F{:^10.2f}|".format(round(t[-1], 2)), end='')
+            for i in range(data.shape[0]):
+                print("{:^7.2f}".format(round(data[i,-1],2)), end='')
+            print('\r')
+            gotData = False # flip low to wait for new data to come in
             
         
-        f.suptitle(fname)
-        plt.pause(1)  # required for dynamic plot to work (if too low, nulling performance bad)
-        ylims = ax.get_ylim()
+    f.suptitle(fname)
+    plt.pause(1/refresh_rate_plot)  # required for dynamic plot to work (if too low, nulling performance bad)
+    ylims = ax.get_ylim()
         # print(str(round(t[-1]-t[0],2))+'\t'+'\t'.join(list(data[:,-1].round(2).astype(str))))
-        
 
-duration = datetime.now() - t0
-# Close task to clear connection once done
 task.close()
 
-#%%
-# Final save data and metadata ... first in python reloadable format:
+# #%%
+# # Final save data and metadata ... first in python reloadable format:
 print('\n')
 import pandas as pd
-print(CHANNEL_MAP)
-print(data.T)
-df = pd.DataFrame(data.T, columns=CHANNEL_MAP, index=[(i-t[0]) for i in t])
-# df.to_csv(filename + '.csv', sep=',')
+if fname != 'monitor':
+    # CHANNEL_NAMES = ['C4','A1','D2','B3','B4','A5','D5','A6','D6']
+    DATA = pd.read_csv(finalFileName+'.csv', sep=',', header=0, index_col = False, names=['t']+CHANNEL_NAMES)
+    DATA.set_index('t', inplace=True)
+    DATA.plot()
+    plt.legend(loc='upper left')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Temperature (C)')
+    plt.axhline(DATA.iloc[:,0].mean(), linestyle='--', color='r',linewidth=1)
+    print(DATA)
 
-# Some messages at the end
-num_samples_acquired = data[0,:].size
-print("\n")
+    
+    if savefigFlag and fname != 'monitor' and fname != 'test':
+        plt.savefig(finalFileName + '.png', format='png')
+    plt.ion()
+    plt.show(block='False')
 
-print("Acquisition duration: {}.".format(duration))
-print("Acquired samples: {}.".format(num_samples_acquired - 1))
-
-
-# Final plot of whole time course the acquisition
-plt.close('all')
-f_tot, ax = plt.subplots(1, 1, sharex='all', sharey='none')
-ax.plot(np.arange(0, data.shape[1], 1)/60, data.T)  
-
-# Label formatting ...
-ax.legend(CHANNEL_MAP)
-ax.set_ylabel('Temperature [C]')
-ax.set_xlabel('Time [m]')
-ax.grid(True)
-
-print(df)
-if savefigFlag and fname != 'monitor' and fname != 'test':
-    plt.savefig(filename + '.png', format='png')
+print("Acquisition duration: {} s".format(time()-t0))
+print("Acquired samples: {} samples | Fs = {} Hz".format(DATA.shape[1], sampling_freq_in))
+if len(dontInclude) > 0:
+    print("Excluding wells: {}".format(",".join(dontInclude)))
 
 print("Close the window and press ENTER in the Terminal to close program.")
-
-plt.show(block='False')
-
-# %%
